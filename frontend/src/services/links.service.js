@@ -1,236 +1,187 @@
 // src/services/links.service.js
-import { config, getApiUrl } from '../utils/config';
-import { AuthService } from '../utils/auth';
+import api from '../utils/api';
 
-export const LinksService = {
-    async getAuthToken() {
-        // Wait for auth to be ready
-        await AuthService.ensureInitialized();
+export const linksService = {
+  // Get links with filters
+  getLinks: async (params = {}) => {
+    return await api.get('/api/links', params);
+  },
 
-        if (!AuthService.isAuthenticated()) {
-            throw new Error('User not authenticated');
-        }
+  // Get single link
+  getLink: async (linkId) => {
+    return await api.get(`/api/links/${linkId}`);
+  },
 
-        const token = await AuthService.getIdToken();
-        if (!token) {
-            throw new Error('Failed to get auth token');
-        }
+  // Create new link
+  createLink: async (linkData) => {
+    return await api.post('/api/links', linkData);
+  },
 
-        return token;
-    },
+  // Update link
+  updateLink: async (linkId, updates) => {
+    return await api.patch(`/api/links/${linkId}`, updates);
+  },
 
-    async getLinks({ view = 'all', search = '', cursor = null, limit = 20 }) {
-        const token = await this.getAuthToken();
-        const params = new URLSearchParams({
-            view,
-            ...(search && { search }),
-            ...(cursor && { cursor }),
-            limit: limit.toString()
-        });
+  // Delete link
+  deleteLink: async (linkId) => {
+    return await api.delete(`/api/links/${linkId}`);
+  },
 
-        // Fix: Use the correct backend route pattern
-        const response = await fetch(getApiUrl(`/api/dashboard/links?${params}`), {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
+  // Pin/unpin link
+  pinLink: async (linkId) => {
+    return await api.post(`/api/links/${linkId}/pin`);
+  },
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new Error(errorData?.error || `Failed to fetch links (${response.status})`);
-        }
+  unpinLink: async (linkId) => {
+    return await api.post(`/api/links/${linkId}/unpin`);
+  },
 
-        const result = await response.json();
+  togglePin: async (linkId) => {
+    return await api.post(`/api/links/${linkId}/toggle-pin`);
+  },
 
-        // Handle the response structure from your backend
-        if (!result.success) {
-            throw new Error(result.error || 'Failed to fetch links');
-        }
+  // Archive/restore link
+  archiveLink: async (linkId) => {
+    return await api.post(`/api/links/${linkId}/archive`);
+  },
 
-        return result; // Return the full response with success, data, etc.
-    },
+  restoreLink: async (linkId) => {
+    return await api.post(`/api/links/${linkId}/restore`);
+  },
 
-    async getStats() {
-        const token = await this.getAuthToken();
+  toggleArchive: async (linkId) => {
+    return await api.post(`/api/links/${linkId}/toggle-archive`);
+  },
 
-        // Fix: Use the correct backend route pattern
-        const response = await fetch(getApiUrl('/api/dashboard/stats'), {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-        });
+  // Toggle active status
+  toggleActive: async (linkId) => {
+    return await api.post(`/api/links/${linkId}/toggle-active`);
+  },
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new Error(errorData?.error || `Failed to fetch stats (${response.status})`);
-        }
+  // Check duplicate
+  checkDuplicate: async (url) => {
+    return await api.post('/api/links/check-duplicate', { original_url: url });
+  },
 
-        const result = await response.json();
+  // Move to folder
+  moveToFolder: async (linkId, folderId) => {
+    return await api.post(`/api/links/${linkId}/move-folder`, { 
+      folder_id: folderId 
+    });
+  },
 
-        // Handle the response structure from your backend
-        if (!result.success) {
-            throw new Error(result.error || 'Failed to fetch stats');
-        }
+  // Bulk move to folder
+  bulkMoveToFolder: async (linkIds, folderId) => {
+    return await Promise.all(
+      linkIds.map(id => linksService.moveToFolder(id, folderId))
+    );
+  },
 
-        return result; // Return the full response with success, data, etc.
-    },
+  // Add tags to link
+  addTags: async (linkId, tagIds) => {
+    return await api.post(`/api/links/${linkId}/add-tags`, { 
+      tag_ids: tagIds 
+    });
+  },
 
-    async createLink(linkData) {
-        const token = await this.getAuthToken();
-        const response = await fetch(getApiUrl('/api/links'), {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(linkData),
-        });
+  // Remove tags from link
+  removeTags: async (linkId, tagIds) => {
+    return await api.post(`/api/links/${linkId}/remove-tags`, { 
+      tag_ids: tagIds 
+    });
+  },
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new Error(errorData?.error || 'Failed to create link');
-        }
+  // Bulk operations
+  bulkDelete: async (linkIds) => {
+    return await Promise.all(
+      linkIds.map(id => linksService.deleteLink(id))
+    );
+  },
 
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.error || 'Failed to create link');
-        }
+  bulkPin: async (linkIds) => {
+    return await Promise.all(
+      linkIds.map(id => linksService.pinLink(id))
+    );
+  },
 
-        return result;
-    },
+  bulkUnpin: async (linkIds) => {
+    return await Promise.all(
+      linkIds.map(id => linksService.unpinLink(id))
+    );
+  },
 
-    async updateLink(linkId, updates) {
-        const token = await this.getAuthToken();
-        const response = await fetch(getApiUrl(`/api/links/${linkId}`), {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(updates),
-        });
+  bulkArchive: async (linkIds) => {
+    return await Promise.all(
+      linkIds.map(id => linksService.archiveLink(id))
+    );
+  },
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new Error(errorData?.error || 'Failed to update link');
-        }
+  bulkRestore: async (linkIds) => {
+    return await Promise.all(
+      linkIds.map(id => linksService.restoreLink(id))
+    );
+  },
 
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.error || 'Failed to update link');
-        }
+  // Star/unstar (if backend supports it)
+  toggleStar: async (linkId) => {
+    return await api.post(`/api/links/${linkId}/toggle-star`);
+  },
 
-        return result;
-    },
+  // Mark as frequently used
+  toggleFrequentlyUsed: async (linkId) => {
+    return await api.post(`/api/links/${linkId}/toggle-frequently-used`);
+  },
 
-    async deleteLink(linkId) {
-        const token = await this.getAuthToken();
-        const response = await fetch(getApiUrl(`/api/links/${linkId}`), {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-        });
+  // Fetch metadata for URL
+  fetchMetadata: async (url) => {
+    try {
+      const result = await api.post('/api/metadata/extract', { 
+        url,
+        force_refresh: false 
+      });
+      return result?.data?.metadata || {};
+    } catch (error) {
+      console.error('Failed to fetch metadata:', error);
+      return {};
+    }
+  },
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new Error(errorData?.error || 'Failed to delete link');
-        }
+  // Refresh link metadata
+  refreshMetadata: async (linkId) => {
+    return await api.post(`/api/metadata/refresh/${linkId}`);
+  },
 
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.error || 'Failed to delete link');
-        }
+  // Get link statistics
+  getLinkStats: async (linkId) => {
+    return await api.get(`/api/links/${linkId}/stats`);
+  },
 
-        return result;
-    },
+  // Get expiring links
+  getExpiringLinks: async (days = 7) => {
+    return await api.get('/api/links', {
+      view: 'expiring_soon',
+      days
+    });
+  },
 
-    async pinLink(linkId) {
-        const token = await this.getAuthToken();
-        const response = await fetch(getApiUrl(`/api/links/${linkId}/pin`), {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-        });
+  // Extend link expiry
+  extendExpiry: async (linkId, days) => {
+    return await api.post(`/api/links/${linkId}/extend-expiry`, { days });
+  },
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new Error(errorData?.error || 'Failed to pin link');
-        }
+  // Set link expiry
+  setExpiry: async (linkId, expiresAt) => {
+    return await api.patch(`/api/links/${linkId}`, { 
+      expires_at: expiresAt 
+    });
+  },
 
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.error || 'Failed to pin link');
-        }
-
-        return result;
-    },
-
-    async unpinLink(linkId) {
-        const token = await this.getAuthToken();
-        const response = await fetch(getApiUrl(`/api/links/${linkId}/unpin`), {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new Error(errorData?.error || 'Failed to unpin link');
-        }
-
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.error || 'Failed to unpin link');
-        }
-
-        return result;
-    },
-
-    async archiveLink(linkId) {
-        const token = await this.getAuthToken();
-        const response = await fetch(getApiUrl(`/api/links/${linkId}/archive`), {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new Error(errorData?.error || 'Failed to archive link');
-        }
-
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.error || 'Failed to archive link');
-        }
-
-        return result;
-    },
-
-    async restoreLink(linkId) {
-        const token = await this.getAuthToken();
-        const response = await fetch(getApiUrl(`/api/links/${linkId}/restore`), {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new Error(errorData?.error || 'Failed to restore link');
-        }
-
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.error || 'Failed to restore link');
-        }
-
-        return result;
-    },
+  // Remove link expiry
+  removeExpiry: async (linkId) => {
+    return await api.patch(`/api/links/${linkId}`, { 
+      expires_at: null 
+    });
+  }
 };
+
+export const LinksService = linksService;
