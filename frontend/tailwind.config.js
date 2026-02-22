@@ -1,4 +1,4 @@
-// tailwind.config.js
+// tailwind.config.js - Updated with xs breakpoint
 /** @type {import('tailwindcss').Config} */
 export default {
     content: [
@@ -7,6 +7,9 @@ export default {
     ],
     theme: {
         extend: {
+            screens: {
+                'xs': '390px',  // Extra small devices (320-389px uses base mobile styles)
+            },
             colors: {
                 'primary': '#0A2A8F',
                 'primary-light': '#1E3A9F',

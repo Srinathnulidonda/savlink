@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/icons/logo.svg" alt="Savlink Logo" width="160" height="160" style="margin-bottom: 20px;" />
+<img src="https://i.postimg.cc/m2yZ2bgV/savlink_crop.png" alt="Savlink Logo" width="100" height="100" style="margin-bottom: 0px;" />
 
 # 🔗 **Savlink**
 ### *Your Personal Web Library*
