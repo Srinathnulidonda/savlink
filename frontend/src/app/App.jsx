@@ -1,4 +1,4 @@
-// src/app/App.jsx
+// frontend/src/app/App.jsx
 
 import { Suspense } from 'react';
 import Router from './Router';

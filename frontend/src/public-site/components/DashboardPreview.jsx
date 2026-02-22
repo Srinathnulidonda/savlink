@@ -1,4 +1,4 @@
-// src/components/home/DashboardPreview.jsx
+// frontend/src/components/home/DashboardPreview.jsx
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 

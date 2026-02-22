@@ -1,4 +1,4 @@
-// src/auth/pages/Register.jsx
+// frontend/src/auth/pages/Register.jsx
 
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'

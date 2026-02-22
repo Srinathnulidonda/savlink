@@ -1,4 +1,4 @@
-// src/app/Router.jsx - Updated
+// frontend/src/app/Router.jsx - Updated
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, lazy } from 'react';
 

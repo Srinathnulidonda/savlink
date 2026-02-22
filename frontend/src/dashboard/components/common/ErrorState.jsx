@@ -1,86 +1,69 @@
 // src/dashboard/components/common/ErrorState.jsx
+
 import { motion } from 'framer-motion';
 
-export default function ErrorState({ 
+export default function ErrorState({
     title = "Something went wrong",
-    message = "We're having trouble loading your data. Please try again.",
+    message = "Please try again or contact support if the problem persists.",
     onRetry,
-    variant = 'default'
+    retryLabel = "Try Again",
+    showRetry = true,
+    className = ""
 }) {
-    const variants = {
-        default: {
-            container: 'flex flex-col items-center justify-center py-12 sm:py-20',
-            icon: 'h-12 w-12 text-red-500 mb-4',
-            title: 'text-lg font-medium text-white mb-2',
-            message: 'text-sm text-gray-400 text-center max-w-md mb-6'
-        },
-        compact: {
-            container: 'flex flex-col items-center justify-center py-6 sm:py-8',
-            icon: 'h-8 w-8 text-red-500 mb-2',
-            title: 'text-base font-medium text-white mb-1',
-            message: 'text-xs text-gray-400 text-center max-w-xs mb-4'
-        },
-        inline: {
-            container: 'flex items-center justify-center py-4',
-            icon: 'h-5 w-5 text-red-500 mr-2',
-            title: 'text-sm font-medium text-white',
-            message: 'text-xs text-gray-400 ml-2'
-        }
-    };
-
-    const styles = variants[variant];
-
-    if (variant === 'inline') {
-        return (
-            <div className={styles.container}>
-                <svg className={styles.icon} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                <span className={styles.title}>{title}</span>
-                {onRetry && (
-                    <button
-                        onClick={onRetry}
-                        className="ml-2 text-xs text-primary hover:text-primary-light transition-colors"
-                    >
-                        Retry
-                    </button>
-                )}
-            </div>
-        );
-    }
-
     return (
-        <div className={styles.container}>
+        <div className={`flex flex-col items-center justify-center py-12 sm:py-20 px-4 ${className}`}>
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
-                className="text-center"
+                className="text-center max-w-md"
             >
-                <svg className={styles.icon} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                <h3 className={styles.title}>
+                {/* Error Icon */}
+                <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.1, type: "spring", stiffness: 200, damping: 15 }}
+                    className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-500/20 mb-6"
+                >
+                    <svg className="h-8 w-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </motion.div>
+
+                {/* Title */}
+                <motion.h3
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-lg sm:text-xl font-medium text-white mb-2"
+                >
                     {title}
-                </h3>
-                <p className={styles.message}>
+                </motion.h3>
+
+                {/* Message */}
+                <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-sm sm:text-base text-gray-500 mb-6 leading-relaxed"
+                >
                     {message}
-                </p>
-                {onRetry && (
-                    <div className="space-x-3">
+                </motion.p>
+
+                {/* Retry Button */}
+                {showRetry && onRetry && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                    >
                         <button
                             onClick={onRetry}
                             className="btn-primary"
                         >
-                            Try Again
+                            {retryLabel}
                         </button>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="btn-secondary"
-                        >
-                            Refresh Page
-                        </button>
-                    </div>
+                    </motion.div>
                 )}
             </motion.div>
         </div>

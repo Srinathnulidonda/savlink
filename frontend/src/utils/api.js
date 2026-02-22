@@ -1,10 +1,11 @@
-// src/utils/api.js
+// src/utils/api.js - Add better debugging
+
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// Create axios instance
+// Create axios instance with proper base URL
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_URL || 'https://savlinks-test-g445.onrender.com',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -20,7 +21,7 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Add timestamp to prevent caching
+    // Add timestamp to prevent caching for GET requests
     if (config.method === 'get') {
       config.params = {
         ...config.params,
@@ -28,9 +29,19 @@ api.interceptors.request.use(
       };
     }
 
+    // Log the request for debugging
+    if (import.meta.env.DEV) {
+      console.log(`🔄 ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, {
+        params: config.params,
+        data: config.data,
+        headers: config.headers
+      });
+    }
+
     return config;
   },
   (error) => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -38,6 +49,11 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
+    // Log successful responses in dev
+    if (import.meta.env.DEV) {
+      console.log(`✅ ${response.config.method?.toUpperCase()} ${response.config.url}`, response.data);
+    }
+
     // Transform response to consistent format
     if (response.data) {
       return {
@@ -60,20 +76,29 @@ api.interceptors.response.use(
                 error.response.data?.message || 
                 `Error ${status}`;
 
+      // Log error details in dev
+      if (import.meta.env.DEV) {
+        console.error(`❌ ${error.config?.method?.toUpperCase()} ${error.config?.url}`, {
+          status,
+          message,
+          data: error.response.data,
+          baseURL: error.config?.baseURL
+        });
+      }
+
       // Handle specific status codes
       switch (status) {
         case 401:
-          // Unauthorized - clear token and redirect
+          console.warn('🔓 Authentication failed - clearing token');
           localStorage.removeItem('auth_token');
           localStorage.removeItem('user');
-          window.location.href = '/login';
           message = 'Session expired. Please login again.';
           break;
         case 403:
           message = 'You do not have permission to perform this action';
           break;
         case 404:
-          message = 'Resource not found';
+          message = 'Resource not found - API endpoint may not exist yet';
           break;
         case 429:
           message = 'Too many requests. Please try again later.';
@@ -85,11 +110,19 @@ api.interceptors.response.use(
     } else if (error.request) {
       // Request sent but no response
       message = 'Network error. Please check your connection.';
+      console.error('📡 Network error:', error.request);
+      console.error('API Base URL:', api.defaults.baseURL);
+    } else {
+      // Something else happened
+      console.error('🔥 Request setup error:', error.message);
     }
 
-    // Show error toast for non-401 errors
+    // Show error toast for non-401 errors (auth context will handle 401)
     if (status !== 401) {
-      toast.error(message);
+      // Don't show toast for network errors in development (using mocks)
+      if (!(status === 500 && import.meta.env.DEV)) {
+        toast.error(message);
+      }
     }
 
     return {
@@ -101,34 +134,29 @@ api.interceptors.response.use(
   }
 );
 
-// API methods
+// Rest of your API service methods remain the same...
+
 const apiService = {
-  // GET request
   get: async (url, params = {}) => {
     return await api.get(url, { params });
   },
 
-  // POST request
   post: async (url, data = {}) => {
     return await api.post(url, data);
   },
 
-  // PUT request
   put: async (url, data = {}) => {
     return await api.put(url, data);
   },
 
-  // PATCH request
   patch: async (url, data = {}) => {
     return await api.patch(url, data);
   },
 
-  // DELETE request
   delete: async (url) => {
     return await api.delete(url);
   },
 
-  // Upload file
   upload: async (url, formData, onProgress) => {
     return await api.post(url, formData, {
       headers: {
@@ -145,32 +173,35 @@ const apiService = {
     });
   },
 
-  // Set auth token
   setAuthToken: (token) => {
     if (token) {
       localStorage.setItem('auth_token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      console.log('🔑 Auth token set');
     } else {
       localStorage.removeItem('auth_token');
       delete api.defaults.headers.common['Authorization'];
+      console.log('🔓 Auth token removed');
     }
   },
 
-  // Remove auth token
   removeAuthToken: () => {
     localStorage.removeItem('auth_token');
     delete api.defaults.headers.common['Authorization'];
+    console.log('🔓 Auth token cleared');
   },
 
-  // Get auth token
   getAuthToken: () => {
     return localStorage.getItem('auth_token');
   },
 
-  // Check if authenticated
   isAuthenticated: () => {
     return !!localStorage.getItem('auth_token');
   },
+
+  getBaseUrl: () => {
+    return api.defaults.baseURL;
+  }
 };
 
 export default apiService;

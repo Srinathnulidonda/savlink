@@ -1,4 +1,4 @@
-// src/main.jsx
+// frontend/src/main.jsx
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

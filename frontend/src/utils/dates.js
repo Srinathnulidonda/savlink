@@ -1,201 +1,74 @@
-// src/utils/dates.js
-import {
-  formatDistanceToNow,
-  format,
-  parseISO,
-  isValid,
-  differenceInDays,
-  differenceInHours,
-  differenceInMinutes,
-  addDays,
-  addHours,
-  addMinutes,
-  startOfDay,
-  endOfDay,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  isToday,
-  isYesterday,
-  isThisWeek,
-  isThisMonth,
-  isThisYear
-} from 'date-fns';
-
-export const formatRelativeDate = (date) => {
-  if (!date) return '';
-  
-  try {
-    const dateObj = typeof date === 'string' ? parseISO(date) : date;
-    
-    if (!isValid(dateObj)) {
-      return 'Invalid date';
-    }
-    
+// frontend/src/utils/dates.js
+export const formatDate = {
+  relative: (dateString) => {
+    const date = new Date(dateString);
     const now = new Date();
-    const diffInMinutes = differenceInMinutes(now, dateObj);
-    const diffInHours = differenceInHours(now, dateObj);
-    const diffInDays = differenceInDays(now, dateObj);
-    
-    // Less than 1 minute
-    if (diffInMinutes < 1) {
-      return 'just now';
-    }
-    
-    // Less than 1 hour
-    if (diffInHours < 1) {
-      return `${diffInMinutes}m ago`;
-    }
-    
-    // Less than 24 hours
-    if (diffInDays < 1) {
-      return `${diffInHours}h ago`;
-    }
-    
-    // Less than 7 days
-    if (diffInDays < 7) {
-      return `${diffInDays}d ago`;
-    }
-    
-    // Less than 30 days
-    if (diffInDays < 30) {
-      const weeks = Math.floor(diffInDays / 7);
-      return `${weeks}w ago`;
-    }
-    
-    // Less than 365 days
-    if (diffInDays < 365) {
-      const months = Math.floor(diffInDays / 30);
-      return `${months}mo ago`;
-    }
-    
-    // More than a year
-    const years = Math.floor(diffInDays / 365);
-    return `${years}y ago`;
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return '';
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    const diffInMonths = Math.floor(diffInDays / 30);
+    const diffInYears = Math.floor(diffInDays / 365);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInDays === 1) return 'Yesterday';
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    if (diffInWeeks === 1) return 'Last week';
+    if (diffInWeeks < 4) return `${diffInWeeks}w ago`;
+    if (diffInMonths === 1) return 'Last month';
+    if (diffInMonths < 12) return `${diffInMonths}mo ago`;
+    if (diffInYears === 1) return 'Last year';
+    return `${diffInYears}y ago`;
+  },
+
+  short: (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  },
+
+  long: (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  },
+
+  time: (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
   }
 };
 
-export const formatDate = (date, formatString = 'MMM d, yyyy') => {
-  if (!date) return '';
-  
-  try {
-    const dateObj = typeof date === 'string' ? parseISO(date) : date;
-    
-    if (!isValid(dateObj)) {
-      return 'Invalid date';
-    }
-    
-    return format(dateObj, formatString);
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return '';
-  }
+export const isToday = (dateString) => {
+  const date = new Date(dateString);
+  const today = new Date();
+  return date.toDateString() === today.toDateString();
 };
 
-export const formatDateTime = (date) => {
-  return formatDate(date, 'MMM d, yyyy h:mm a');
+export const isYesterday = (dateString) => {
+  const date = new Date(dateString);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return date.toDateString() === yesterday.toDateString();
 };
 
-export const formatTime = (date) => {
-  return formatDate(date, 'h:mm a');
-};
-
-export const getDateRangeLabel = (date) => {
-  if (!date) return '';
-  
-  try {
-    const dateObj = typeof date === 'string' ? parseISO(date) : date;
-    
-    if (!isValid(dateObj)) {
-      return 'Invalid date';
-    }
-    
-    if (isToday(dateObj)) {
-      return 'Today';
-    }
-    
-    if (isYesterday(dateObj)) {
-      return 'Yesterday';
-    }
-    
-    if (isThisWeek(dateObj)) {
-      return 'This week';
-    }
-    
-    if (isThisMonth(dateObj)) {
-      return 'This month';
-    }
-    
-    if (isThisYear(dateObj)) {
-      return format(dateObj, 'MMMM');
-    }
-    
-    return format(dateObj, 'MMMM yyyy');
-  } catch (error) {
-    console.error('Error getting date range label:', error);
-    return '';
-  }
-};
-
-export const parseDuration = (duration) => {
-  // Parse durations like "7d", "24h", "30m"
-  const match = duration.match(/^(\d+)([hdwmy])$/);
-  
-  if (!match) {
-    return null;
-  }
-  
-  const [, amount, unit] = match;
+export const isThisWeek = (dateString) => {
+  const date = new Date(dateString);
   const now = new Date();
-  
-  switch (unit) {
-    case 'h':
-      return addHours(now, parseInt(amount));
-    case 'd':
-      return addDays(now, parseInt(amount));
-    case 'w':
-      return addDays(now, parseInt(amount) * 7);
-    case 'm':
-      return addDays(now, parseInt(amount) * 30);
-    case 'y':
-      return addDays(now, parseInt(amount) * 365);
-    default:
-      return null;
-  }
+  const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+  return date >= startOfWeek;
 };
-
-export const getDateRangeFilter = (range) => {
-  const now = new Date();
-  
-  switch (range) {
-    case 'today':
-      return { start: startOfDay(now), end: endOfDay(now) };
-    case 'yesterday':
-      const yesterday = addDays(now, -1);
-      return { start: startOfDay(yesterday), end: endOfDay(yesterday) };
-    case 'thisWeek':
-      return { start: startOfWeek(now), end: endOfWeek(now) };
-    case 'lastWeek':
-      const lastWeek = addDays(now, -7);
-      return { start: startOfWeek(lastWeek), end: endOfWeek(lastWeek) };
-    case 'thisMonth':
-      return { start: startOfMonth(now), end: endOfMonth(now) };
-    case 'lastMonth':
-      const lastMonth = addDays(now, -30);
-      return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
-    case 'last7Days':
-      return { start: addDays(now, -7), end: now };
-    case 'last30Days':
-      return { start: addDays(now, -30), end: now };
-    case 'last90Days':
-      return { start: addDays(now, -90), end: now };
-    default:
-      return null;
-  }
-};
-
-export const timeAgo = formatRelativeDate; // Alias for backward compatibility

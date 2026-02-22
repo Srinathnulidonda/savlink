@@ -1,97 +1,105 @@
-// src/dashboard/DashboardApp.jsx - Updated
-import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+// src/dashboard/DashboardApp.jsx 
+
+import { useState, useEffect, useRef } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from './layout/DashboardLayout';
-import HomeView from './views/Home/HomeView';
-import { DashboardService } from '../services/dashboard.service';
-import { useAuth } from '../auth/context/AuthContext';
+import LinksView from './components/links/LinksView';
 import AddLinkModal from './modals/AddLink/AddLinkModal';
-import CommandPalette from './components/common/CommandPalette';
+import CommandPalette from './modals/CommandPalette/CommandPalette';
+import LinksService from '../services/links.service'; // ✅ For individual link operations
+import DashboardService from '../services/dashboard.service'; // ✅ For dashboard data
+import { useAuth } from '../auth/context/AuthContext';
 import toast from 'react-hot-toast';
 
-// Lazy load other views
-import { lazy, Suspense } from 'react';
-const MyFilesView = lazy(() => import('./views/MyFiles/MyFilesView'));
-const AllLinksView = lazy(() => import('./views/AllLinks/AllLinksView'));
-const RecentView = lazy(() => import('./views/Recent/RecentView'));
-const StarredView = lazy(() => import('./views/Starred/StarredView'));
-const ArchivedView = lazy(() => import('./views/Archived/ArchivedView'));
-const CollectionView = lazy(() => import('./views/Collection/CollectionView'));
-const SearchView = lazy(() => import('./views/Search/SearchView'));
-const ProfileView = lazy(() => import('./views/Profile/ProfileView'));
-const SettingsView = lazy(() => import('./views/Settings/SettingsView'));
-const ShortView = lazy(() => import('./views/Short/ShortView'));
-
-function ViewLoader() {
-    return (
-        <div className="flex items-center justify-center h-full">
-            <div className="h-8 w-8 rounded-full border-2 border-gray-800 border-t-primary animate-spin" />
-        </div>
-    );
-}
-
-export default function DashboardApp() {
+export default function Dashboard() {
     const { user } = useAuth();
-    const location = useLocation();
-    
+    const navigate = useNavigate();
+
+    const [links, setLinks] = useState([]);
     const [stats, setStats] = useState({
         all: 0,
         recent: 0,
         starred: 0,
-        pinned: 0,
         archive: 0,
-        unassigned: 0
     });
+    const [view, setView] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
     const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+    const [dataLoading, setDataLoading] = useState(true);
 
-    // Get current page title based on route
-    const getCurrentPageTitle = () => {
-        const path = location.pathname;
-        if (path === '/dashboard') return 'Home';
-        if (path.includes('/files')) return 'My Files';
-        if (path.includes('/all')) return 'All Links';
-        if (path.includes('/recent')) return 'Recent';
-        if (path.includes('/starred')) return 'Starred';
-        if (path.includes('/archive')) return 'Archive';
-        if (path.includes('/collections')) return 'Collection';
-        if (path.includes('/search')) return 'Search';
-        if (path.includes('/profile')) return 'Profile';
-        if (path.includes('/settings')) return 'Settings';
-        return 'Dashboard';
-    };
+    // Prevent duplicate fetches
+    const fetchingRef = useRef(false);
+    const lastFetchParamsRef = useRef({ view: '', searchQuery: '' });
 
-    // Fetch dashboard stats
+    // Fetch data when component mounts or view/search changes
     useEffect(() => {
-        fetchStats();
-    }, []);
+        // Check if params actually changed
+        if (
+            lastFetchParamsRef.current.view === view &&
+            lastFetchParamsRef.current.searchQuery === searchQuery &&
+            fetchingRef.current
+        ) {
+            return;
+        }
 
-    const fetchStats = async () => {
+        lastFetchParamsRef.current = { view, searchQuery };
+        fetchDashboardData();
+    }, [view, searchQuery]);
+
+    const fetchDashboardData = async () => {
+        // Prevent duplicate requests
+        if (fetchingRef.current) return;
+        fetchingRef.current = true;
+
         try {
-            const result = await DashboardService.getStats();
-            if (result?.success && result?.data?.stats?.counts) {
-                setStats({
-                    all: result.data.stats.counts.all || 0,
-                    recent: result.data.stats.counts.recent || 0,
-                    starred: result.data.stats.counts.starred || 0,
-                    pinned: result.data.stats.counts.pinned || 0,
-                    archive: result.data.stats.counts.archive || 0,
-                    unassigned: result.data.stats.counts.unassigned || 0
-                });
+            setDataLoading(true);
+
+            // Fetch data in parallel using DashboardService
+            const [linksResult, statsResult] = await Promise.allSettled([
+                DashboardService.getLinks({ view, search: searchQuery }), // ✅ Using DashboardService
+                DashboardService.getStats() // ✅ Using DashboardService
+            ]);
+
+            // Handle links
+            if (linksResult.status === 'fulfilled' && linksResult.value?.success) {
+                const linksData = linksResult.value.data?.links || [];
+                setLinks(linksData);
+            } else if (linksResult.reason?.message?.includes('401')) {
+                // Token expired
+                navigate('/login', { replace: true });
+                return;
+            } else {
+                console.error('Links fetch failed:', linksResult.reason);
+                setLinks([]);
             }
+
+            // Handle stats
+            if (statsResult.status === 'fulfilled' && statsResult.value?.success) {
+                const statsData = statsResult.value.data?.stats;
+                if (statsData) {
+                    setStats({
+                        all: statsData.all || 0,
+                        recent: statsData.recent || 0,
+                        starred: statsData.starred || 0,
+                        archive: statsData.archive || 0,
+                    });
+                }
+            }
+
         } catch (error) {
-            console.error('Failed to fetch stats:', error);
+            console.error('Dashboard data fetch error:', error);
+            toast.error('Failed to load data');
+        } finally {
+            setDataLoading(false);
+            fetchingRef.current = false;
         }
     };
 
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                return;
-            }
-
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
                 setIsCommandPaletteOpen(true);
@@ -101,57 +109,166 @@ export default function DashboardApp() {
                 setIsAddLinkOpen(true);
             }
             if (e.key === 'Escape') {
-                if (isCommandPaletteOpen) {
-                    setIsCommandPaletteOpen(false);
-                } else if (isAddLinkOpen) {
-                    setIsAddLinkOpen(false);
-                }
+                setIsCommandPaletteOpen(false);
+                setIsAddLinkOpen(false);
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isCommandPaletteOpen, isAddLinkOpen]);
+    }, []);
 
     const handleAddLink = async (linkData) => {
-        setIsAddLinkOpen(false);
-        toast.success('Link saved successfully');
-        fetchStats();
-        window.dispatchEvent(new CustomEvent('linkCreated', { detail: linkData }));
+        try {
+            const result = await LinksService.createLink(linkData);
+            if (result?.success && result?.data) {
+                // Optimistically update UI
+                setLinks([result.data, ...links]);
+                setIsAddLinkOpen(false);
+                toast.success('Link saved successfully');
+
+                // Update stats in background
+                DashboardService.getStats().then(statsResult => {
+                    if (statsResult?.success && statsResult?.data?.stats) {
+                        setStats({
+                            all: statsResult.data.stats.all || 0,
+                            recent: statsResult.data.stats.recent || 0,
+                            starred: statsResult.data.stats.starred || 0,
+                            archive: statsResult.data.stats.archive || 0,
+                        });
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error creating link:', error);
+            toast.error(error.message || 'Failed to save link');
+        }
     };
 
-    useEffect(() => {
-        const handleOpenAddLink = () => setIsAddLinkOpen(true);
-        window.addEventListener('openAddLink', handleOpenAddLink);
-        return () => window.removeEventListener('openAddLink', handleOpenAddLink);
-    }, []);
+    const handleUpdateLink = async (linkId, updates) => {
+        try {
+            const result = await LinksService.updateLink(linkId, updates);
+            if (result?.success && result?.data) {
+                setLinks(links.map(link =>
+                    link.id === linkId ? result.data : link
+                ));
+                toast.success('Link updated');
+            }
+        } catch (error) {
+            console.error('Error updating link:', error);
+            toast.error(error.message || 'Failed to update link');
+        }
+    };
+
+    const handleDeleteLink = async (linkId) => {
+        try {
+            // Optimistically update UI
+            setLinks(links.filter(link => link.id !== linkId));
+            toast.success('Link deleted');
+
+            // Delete in background
+            await LinksService.deleteLink(linkId);
+
+            // Update stats in background
+            DashboardService.getStats().then(statsResult => {
+                if (statsResult?.success && statsResult?.data?.stats) {
+                    setStats({
+                        all: statsResult.data.stats.all || 0,
+                        recent: statsResult.data.stats.recent || 0,
+                        starred: statsResult.data.stats.starred || 0,
+                        archive: statsResult.data.stats.archive || 0,
+                    });
+                }
+            });
+        } catch (error) {
+            // Revert on error
+            fetchDashboardData();
+            console.error('Error deleting link:', error);
+            toast.error(error.message || 'Failed to delete link');
+        }
+    };
+
+    const handlePinLink = async (linkId) => {
+        try {
+            const link = links.find(l => l.id === linkId);
+            if (link?.pinned) {
+                await LinksService.unpinLink(linkId);
+                toast.success('Link unpinned');
+            } else {
+                await LinksService.pinLink(linkId);
+                toast.success('Link pinned');
+            }
+
+            // Refresh to get updated order
+            fetchDashboardData();
+        } catch (error) {
+            console.error('Error toggling pin:', error);
+            toast.error(error.message || 'Failed to update pin status');
+        }
+    };
+
+    const handleArchiveLink = async (linkId) => {
+        try {
+            const link = links.find(l => l.id === linkId);
+
+            // Optimistically update UI
+            if (view === 'archive' && !link?.archived) {
+                setLinks(links.filter(l => l.id !== linkId));
+            } else if (view !== 'archive' && link?.archived) {
+                setLinks(links.filter(l => l.id !== linkId));
+            }
+
+            if (link?.archived) {
+                await LinksService.restoreLink(linkId);
+                toast.success('Link restored');
+            } else {
+                await LinksService.archiveLink(linkId);
+                toast.success('Link archived');
+            }
+
+            // Refresh in background
+            fetchDashboardData();
+        } catch (error) {
+            console.error('Error archiving link:', error);
+            toast.error(error.message || 'Failed to archive link');
+            fetchDashboardData();
+        }
+    };
 
     return (
         <DashboardLayout
             user={user}
             stats={stats}
-            currentPage={getCurrentPageTitle()}
+            activeView={view}
+            onViewChange={setView}
+            onSearch={setSearchQuery}
+            searchQuery={searchQuery}
             onAddLink={() => setIsAddLinkOpen(true)}
             onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         >
-            <Suspense fallback={<ViewLoader />}>
-                <Routes>
-                    <Route path="/" element={<HomeView />} />
-                    <Route path="/files" element={<MyFilesView />} />
-                    <Route path="/all" element={<AllLinksView />} />
-                    <Route path="/recent" element={<RecentView />} />
-                    <Route path="/starred" element={<StarredView />} />
-                    <Route path="/archive" element={<ArchivedView />} />
-                    <Route path="/collections/:id" element={<CollectionView />} />
-                    <Route path="/search" element={<SearchView />} />
-                    <Route path="/profile" element={<ProfileView />} />
-                    <Route path="/settings/*" element={<SettingsView />} />
-                    <Route path="/short" element={<ShortView />} />
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                </Routes>
-            </Suspense>
+            <Routes>
+                <Route
+                    path="/"
+                    element={
+                        <LinksView
+                            links={links}
+                            view={view}
+                            searchQuery={searchQuery}
+                            viewMode={window.innerWidth >= 768 ? 'grid' : 'list'}
+                            onUpdateLink={handleUpdateLink}
+                            onDeleteLink={handleDeleteLink}
+                            onPinLink={handlePinLink}
+                            onArchiveLink={handleArchiveLink}
+                            onRefresh={() => setIsAddLinkOpen(true)}
+                            loading={dataLoading}
+                        />
+                    }
+                />
+                <Route path="/collections/:id" element={<div>Collection View</div>} />
+                <Route path="/settings" element={<div>Settings</div>} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
 
-            {/* Modals */}
             <AnimatePresence>
                 {isAddLinkOpen && (
                     <AddLinkModal
@@ -170,6 +287,10 @@ export default function DashboardApp() {
                         onAddLink={() => {
                             setIsCommandPaletteOpen(false);
                             setIsAddLinkOpen(true);
+                        }}
+                        onNavigate={(path) => {
+                            setIsCommandPaletteOpen(false);
+                            navigate(path);
                         }}
                     />
                 )}

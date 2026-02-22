@@ -1,3 +1,5 @@
+// frontend/src/auth/services/auth.service.js
+
 import {
     getAuth,
     signInWithEmailAndPassword,

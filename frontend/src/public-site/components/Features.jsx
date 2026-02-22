@@ -1,4 +1,4 @@
-// src/components/home/Features.jsx
+// frontend/src/components/home/Features.jsx
 import { useRef, useState } from 'react';
 import { motion, useInView, useMotionValue, useTransform } from 'framer-motion';
 

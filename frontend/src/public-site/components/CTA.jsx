@@ -1,4 +1,4 @@
-// src/components/home/CTASection.jsx
+// frontend/src/components/home/CTASection.jsx
 import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView, useMotionValue, useTransform } from 'framer-motion';

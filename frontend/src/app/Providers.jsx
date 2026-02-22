@@ -1,4 +1,4 @@
-// src/app/Providers.jsx
+// frontend/src/app/Providers.jsx
 
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';

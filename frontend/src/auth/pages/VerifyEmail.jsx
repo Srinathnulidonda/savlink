@@ -1,4 +1,4 @@
-// src/auth/pages/VerifyEmail.jsx
+// frontend/src/auth/pages/VerifyEmail.jsx
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, Link, useLocation } from 'react-router-dom'

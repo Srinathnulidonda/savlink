@@ -1,157 +1,258 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { AuthService } from '../services/auth.service'
+// frontend/src/auth/context/AuthContext.jsx
+import { createContext, useContext, useState, useEffect } from 'react';
+import { auth } from '../../config/firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
+  sendPasswordResetEmail,
+  updateProfile
+} from 'firebase/auth';
+import apiService from '../../utils/api';
+import toast from 'react-hot-toast';
 
-const AuthContext = createContext({
-    user: null,
-    loading: true,
-    error: null,
-    signIn: async () => { },
-    signOut: async () => { },
-    updateUser: () => { },
-    isFromCache: false,
-    needsVerification: false
-})
+const AuthContext = createContext({});
 
 export const useAuth = () => {
-    const context = useContext(AuthContext)
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider')
-    }
-    return context
-}
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(null)
-    const navigate = useNavigate()
-    const location = useLocation()
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
-    const authInitializedRef = useRef(false)
-
-    useEffect(() => {
-        if (authInitializedRef.current) return
-        authInitializedRef.current = true
-
-        let unsubscribe
-        let sessionExpiredHandler
-
-        const initializeAuth = async () => {
-            try {
-                const cachedUser = AuthService.getCachedUser()
-                if (cachedUser) {
-                    setUser(cachedUser)
-                    setLoading(false)
-                }
-
-                await AuthService.ensureInitialized()
-
-                unsubscribe = AuthService.onAuthStateChange((currentUser) => {
-                    setUser(currentUser)
-                    
-                    if (!cachedUser) {
-                        setLoading(false)
-                    }
-                    
-                    setError(null)
-                })
-
-                sessionExpiredHandler = (event) => {
-                    setError(`Session expired: ${event.detail.reason}`)
-                    setUser(null)
-                }
-
-                window.addEventListener('auth-session-expired', sessionExpiredHandler)
-
-            } catch (error) {
-                console.error('Auth context initialization error:', error)
-                setError('Failed to initialize authentication')
-                setLoading(false)
-            }
+  // Initialize auth state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      try {
+        if (firebaseUser) {
+          // Get Firebase token
+          const token = await firebaseUser.getIdToken();
+          
+          // Set token in API service
+          apiService.setAuthToken(token);
+          
+          // Create user object
+          const userData = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0],
+            avatar_url: firebaseUser.photoURL,
+            email_verified: firebaseUser.emailVerified,
+          };
+          
+          // Store user data
+          localStorage.setItem('user', JSON.stringify(userData));
+          setUser(userData);
+          
+          console.log('🔐 User authenticated:', userData.email);
+        } else {
+          // Clear auth state
+          apiService.removeAuthToken();
+          localStorage.removeItem('user');
+          setUser(null);
+          
+          console.log('🔓 User signed out');
         }
+      } catch (error) {
+        console.error('🔥 Auth state change error:', error);
+        // Clear potentially corrupted state
+        apiService.removeAuthToken();
+        localStorage.removeItem('user');
+        setUser(null);
+      } finally {
+        setLoading(false);
+        setInitialized(true);
+      }
+    });
 
-        initializeAuth()
-
-        return () => {
-            if (unsubscribe) unsubscribe()
-            if (sessionExpiredHandler) {
-                window.removeEventListener('auth-session-expired', sessionExpiredHandler)
-            }
-        }
-    }, [])
-
-    const signIn = async (email, password, rememberMe = true) => {
-        setLoading(true)
-        setError(null)
-
-        try {
-            const response = await AuthService.login({ email, password, rememberMe })
-
-            if (response.success) {
-                return { success: true, message: response.message }
-            } else {
-                const errorMessage = response.error?.message || 'Login failed'
-                setError(errorMessage)
-                return { success: false, error: errorMessage }
-            }
-        } catch (error) {
-            const errorMessage = error.message || 'An unexpected error occurred'
-            setError(errorMessage)
-            return { success: false, error: errorMessage }
-        } finally {
-            setLoading(false)
-        }
+    // Check for existing token on startup
+    const existingToken = apiService.getAuthToken();
+    const existingUser = localStorage.getItem('user');
+    
+    if (existingToken && existingUser && !initialized) {
+      try {
+        const userData = JSON.parse(existingUser);
+        apiService.setAuthToken(existingToken);
+        setUser(userData);
+        console.log('🔄 Restored auth state for:', userData.email);
+      } catch (error) {
+        console.error('🔥 Failed to restore auth state:', error);
+        apiService.removeAuthToken();
+        localStorage.removeItem('user');
+      }
     }
 
-    const signOut = async () => {
-        setLoading(true)
-        setError(null)
+    return unsubscribe;
+  }, [initialized]);
 
-        try {
-            await AuthService.logout()
-            setUser(null)
-            navigate('/')
-            return { success: true }
-        } catch (error) {
-            console.error('Logout error:', error)
-            const errorMessage = 'Failed to sign out. Please try again.'
-            setError(errorMessage)
-            return { success: false, error: errorMessage }
-        } finally {
-            setLoading(false)
-        }
+  // Sign in with email and password
+  const signIn = async (email, password) => {
+    try {
+      setLoading(true);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      toast.success('Welcome back!');
+      return { success: true, user: result.user };
+    } catch (error) {
+      console.error('🔥 Sign in error:', error);
+      let message = 'Failed to sign in';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          message = 'No account found with this email';
+          break;
+        case 'auth/wrong-password':
+          message = 'Incorrect password';
+          break;
+        case 'auth/invalid-email':
+          message = 'Invalid email address';
+          break;
+        case 'auth/user-disabled':
+          message = 'This account has been disabled';
+          break;
+        case 'auth/too-many-requests':
+          message = 'Too many failed attempts. Please try again later.';
+          break;
+        default:
+          message = error.message || 'Failed to sign in';
+      }
+      
+      toast.error(message);
+      return { success: false, error: message };
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const updateUser = (updates) => {
-        if (user) {
-            setUser(prevUser => ({ ...prevUser, ...updates }))
-        }
+  // Sign up with email and password
+  const signUp = async (email, password, name) => {
+    try {
+      setLoading(true);
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Update profile with name
+      if (name) {
+        await updateProfile(result.user, { displayName: name });
+      }
+      
+      toast.success('Account created successfully!');
+      return { success: true, user: result.user };
+    } catch (error) {
+      console.error('🔥 Sign up error:', error);
+      let message = 'Failed to create account';
+      
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          message = 'An account with this email already exists';
+          break;
+        case 'auth/invalid-email':
+          message = 'Invalid email address';
+          break;
+        case 'auth/weak-password':
+          message = 'Password is too weak';
+          break;
+        default:
+          message = error.message || 'Failed to create account';
+      }
+      
+      toast.error(message);
+      return { success: false, error: message };
+    } finally {
+      setLoading(false);
     }
+  };
 
-    useEffect(() => {
-        if (error) {
-            const timer = setTimeout(() => {
-                setError(null)
-            }, 5000)
-            return () => clearTimeout(timer)
-        }
-    }, [error])
-
-    const value = {
-        user,
-        loading,
-        error,
-        signIn,
-        signOut,
-        updateUser,
-        isAuthenticated: !!user,
-        isEmailVerified: user?.email_verified ?? false,
-        isFromCache: user?._fromCache ?? false,
-        needsVerification: user?._needsVerification ?? false
+  // Sign in with Google
+  const signInWithGoogle = async () => {
+    try {
+      setLoading(true);
+      const provider = new GoogleAuthProvider();
+      provider.addScope('email');
+      provider.addScope('profile');
+      
+      const result = await signInWithPopup(auth, provider);
+      toast.success('Welcome!');
+      return { success: true, user: result.user };
+    } catch (error) {
+      console.error('🔥 Google sign in error:', error);
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        // User closed popup - don't show error
+        return { success: false, error: null };
+      }
+      
+      const message = error.message || 'Failed to sign in with Google';
+      toast.error(message);
+      return { success: false, error: message };
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  // Sign out
+  const signOut = async () => {
+    try {
+      await firebaseSignOut(auth);
+      toast.success('Signed out successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('🔥 Sign out error:', error);
+      const message = error.message || 'Failed to sign out';
+      toast.error(message);
+      return { success: false, error: message };
+    }
+  };
+
+  // Reset password
+  const resetPassword = async (email) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast.success('Password reset email sent!');
+      return { success: true };
+    } catch (error) {
+      console.error('🔥 Password reset error:', error);
+      let message = 'Failed to send reset email';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          message = 'No account found with this email';
+          break;
+        case 'auth/invalid-email':
+          message = 'Invalid email address';
+          break;
+        default:
+          message = error.message || 'Failed to send reset email';
+      }
+      
+      toast.error(message);
+      return { success: false, error: message };
+    }
+  };
+
+  const value = {
+    user,
+    loading,
+    initialized,
+    signIn,
+    signUp,
+    signInWithGoogle,
+    signOut,
+    resetPassword
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-export default AuthContext
+export default AuthContext;

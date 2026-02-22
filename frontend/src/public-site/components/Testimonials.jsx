@@ -1,4 +1,4 @@
-// src/components/home/TestimonialsSection.jsx
+// frontend/src/components/home/TestimonialsSection.jsx
 import { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
 

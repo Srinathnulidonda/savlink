@@ -1,8 +1,24 @@
-// src/config/config.js
-const isDevelopment = import.meta.env.DEV || process.env.NODE_ENV === 'development'
+// frontend/src/config/config.js - Updated with environment detection
+const isDevelopment = import.meta.env.DEV || process.env.NODE_ENV === 'development';
+
+// Auto-detect API URL based on environment
+const getApiBaseUrl = () => {
+  // If explicitly set in env, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // Auto-detect based on current location
+  if (isDevelopment) {
+    return 'https://savlinks-test-g445.onrender.com';
+  }
+  
+  // Production fallback
+  return 'https://savlinks-test-g445.onrender.com';
+};
 
 export const config = {
-    apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+    apiBaseUrl: getApiBaseUrl(),
     appName: 'Savlink',
     appVersion: '1.0.0',
 
@@ -14,37 +30,38 @@ export const config = {
     },
 
     tokens: {
-        accessTokenKey: 'savlink_access_token',
+        accessTokenKey: 'auth_token', // Simplified
         refreshTokenKey: 'savlink_refresh_token',
-        userDataKey: 'savlink_user',
+        userDataKey: 'user', // Simplified
         tokenExpiry: 15 * 60 * 1000,
         refreshExpiry: 7 * 24 * 60 * 60 * 1000,
     },
 
     endpoints: {
         auth: {
-            register: '/api/auth/register',
-            login: '/api/auth/login',
-            logout: '/api/auth/logout',
-            refresh: '/api/auth/refresh',
-            verifyEmail: '/api/auth/verify-email',
-            resendVerification: '/api/auth/resend-verification',
-            forgotPassword: '/api/auth/forgot-password',
-            resetPassword: '/api/auth/reset-password',
-            changePassword: '/api/auth/change-password',
-            deleteAccount: '/api/auth/delete-account',
+            register: '/auth/register',
+            login: '/auth/login',
+            logout: '/auth/logout',
+            refresh: '/auth/refresh',
+            verifyEmail: '/auth/verify-email',
+            resendVerification: '/auth/resend-verification',
+            forgotPassword: '/auth/forgot-password',
+            resetPassword: '/auth/reset-password',
+            changePassword: '/auth/change-password',
+            deleteAccount: '/auth/delete-account',
             profile: '/auth/me',
         },
         links: {
             base: '/api/links',
-            collections: '/api/collections',
+            collections: '/api/folders',
             tags: '/api/tags',
-            search: '/api/links/search',
+            search: '/api/search',
             analytics: '/api/analytics',
         },
         dashboard: {
             links: '/api/dashboard/links',
-            stats: '/api/dashboard/stats'
+            stats: '/api/dashboard/stats',
+            home: '/api/dashboard/home'
         }
     },
 

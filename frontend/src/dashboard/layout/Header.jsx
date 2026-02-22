@@ -1,16 +1,22 @@
-// src/dashboard/layout/Header.jsx - Updated with exact Google Drive mobile height
+// src/dashboard/layout/Header.jsx
+
 import { useState, useEffect } from 'react';
 import HeaderMobile from '../components/header/HeaderMobile';
 import HeaderDesktop from '../components/header/HeaderDesktop';
 
 export default function Header({
+    activeView,
     stats,
+    searchQuery,
+    onSearch,
+    viewMode,
+    onViewModeChange,
     onAddLink,
     onMenuClick,
     onOpenCommandPalette,
-    currentPage,
-    user
+    isMobile
 }) {
+    // Mobile detection with state to prevent hydration mismatch
     const [isMobileView, setIsMobileView] = useState(false);
 
     useEffect(() => {
@@ -24,23 +30,24 @@ export default function Header({
     }, []);
 
     return (
-        <div className={`border-b border-gray-900 bg-gray-950/50 ${
-            isMobileView ? 'h-14' : 'px-4 lg:px-6 py-3 sm:py-4'
-        }`}>
+        <div className="border-b border-gray-900 bg-gray-950/50 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
             {isMobileView ? (
                 <HeaderMobile
+                    activeView={activeView}
                     stats={stats}
                     onMenuClick={onMenuClick}
                     onOpenCommandPalette={onOpenCommandPalette}
-                    currentPage={currentPage}
-                    user={user}
+                // Note: onAddLink is handled by the floating button on mobile
                 />
             ) : (
                 <HeaderDesktop
+                    activeView={activeView}
                     stats={stats}
+                    searchQuery={searchQuery}
+                    onSearch={onSearch}
+                    viewMode={viewMode}
+                    onViewModeChange={onViewModeChange}
                     onAddLink={onAddLink}
-                    currentPage={currentPage}
-                    user={user}
                 />
             )}
         </div>

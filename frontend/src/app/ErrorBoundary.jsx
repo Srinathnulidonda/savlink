@@ -1,4 +1,4 @@
-// src/app/ErrorBoundary.jsx
+// frontend/src/app/ErrorBoundary.jsx
 
 import { Component } from 'react';
 

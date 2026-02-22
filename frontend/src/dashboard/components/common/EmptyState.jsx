@@ -1,64 +1,73 @@
 // src/dashboard/components/common/EmptyState.jsx
+
 import { motion } from 'framer-motion';
 
-export default function EmptyState({ 
+export default function EmptyState({
     icon,
-    title, 
-    description, 
+    title,
+    description,
+    action,
     actionLabel,
-    onAction,
-    variant = 'default'
+    className = ""
 }) {
-    const variants = {
-        default: {
-            container: 'text-center py-12 sm:py-20',
-            icon: 'h-12 sm:h-16 w-12 sm:w-16 text-gray-600 mb-4 mx-auto',
-            title: 'text-lg sm:text-xl font-medium text-white mb-2',
-            description: 'text-sm sm:text-base text-gray-500 text-center max-w-md'
-        },
-        compact: {
-            container: 'text-center py-6 sm:py-8',
-            icon: 'h-8 w-8 text-gray-600 mb-2 mx-auto',
-            title: 'text-base font-medium text-white mb-1',
-            description: 'text-xs sm:text-sm text-gray-500 text-center max-w-xs'
-        },
-        inline: {
-            container: 'text-center py-4',
-            icon: 'h-6 w-6 text-gray-600 mb-1 mx-auto',
-            title: 'text-sm font-medium text-white mb-1',
-            description: 'text-xs text-gray-500'
-        }
-    };
-
-    const styles = variants[variant];
-
     const defaultIcon = (
-        <svg className={styles.icon} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-3m-13 0h3m-3 0v-3m3 3v3" />
+        <svg className="h-12 w-12 sm:h-16 sm:w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
     );
 
     return (
-        <div className={styles.container}>
+        <div className={`flex flex-col items-center justify-center py-12 sm:py-20 px-4 ${className}`}>
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
+                className="text-center max-w-md"
             >
-                {icon || defaultIcon}
-                <h3 className={styles.title}>
+                {/* Icon */}
+                <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.1, type: "spring", stiffness: 200, damping: 15 }}
+                    className="mx-auto text-gray-600 mb-6"
+                >
+                    {icon || defaultIcon}
+                </motion.div>
+
+                {/* Title */}
+                <motion.h3
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-lg sm:text-xl font-medium text-white mb-2"
+                >
                     {title}
-                </h3>
-                <p className={styles.description}>
+                </motion.h3>
+
+                {/* Description */}
+                <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-sm sm:text-base text-gray-500 mb-6 leading-relaxed"
+                >
                     {description}
-                </p>
-                {actionLabel && onAction && (
-                    <button
-                        onClick={onAction}
-                        className="mt-6 btn-primary"
+                </motion.p>
+
+                {/* Action Button */}
+                {action && actionLabel && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
                     >
-                        {actionLabel}
-                    </button>
+                        <button
+                            onClick={action}
+                            className="btn-primary"
+                        >
+                            {actionLabel}
+                        </button>
+                    </motion.div>
                 )}
             </motion.div>
         </div>
