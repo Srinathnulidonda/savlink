@@ -22,6 +22,7 @@ function LinksPageWrapper({
     onUpdateLink,
     onDeleteLink,
     onPinLink,
+    onStarLink,
     onArchiveLink,
     onRefresh,
     loading,
@@ -38,6 +39,7 @@ function LinksPageWrapper({
             onUpdateLink={onUpdateLink}
             onDeleteLink={onDeleteLink}
             onPinLink={onPinLink}
+            onStarLink={onStarLink}
             onArchiveLink={onArchiveLink}
             onRefresh={onRefresh}
             loading={loading}
@@ -58,35 +60,24 @@ export default function Dashboard() {
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [dataLoading, setDataLoading] = useState(true);
 
-    // ✅ ViewMode — single source of truth, persisted in localStorage
     const [viewMode, setViewMode] = useState(() => {
-        try {
-            return localStorage.getItem('savlink_view_mode') || 'grid';
-        } catch {
-            return 'grid';
-        }
+        try { return localStorage.getItem('savlink_view_mode') || 'grid'; }
+        catch { return 'grid'; }
     });
 
     const handleViewModeChange = useCallback((mode) => {
         setViewMode(mode);
-        try {
-            localStorage.setItem('savlink_view_mode', mode);
-        } catch {
-            // Silently fail if localStorage unavailable
-        }
+        try { localStorage.setItem('savlink_view_mode', mode); } catch {}
     }, []);
 
     const fetchingRef = useRef(false);
     const lastFetchParamsRef = useRef({ view: '', searchQuery: '' });
 
-    // Fetch data when view or search changes
     useEffect(() => {
         if (
             lastFetchParamsRef.current.view === view &&
             lastFetchParamsRef.current.searchQuery === searchQuery
-        ) {
-            return;
-        }
+        ) return;
         lastFetchParamsRef.current = { view, searchQuery };
         fetchDashboardData();
     }, [view, searchQuery]);
@@ -94,31 +85,18 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
         if (fetchingRef.current) return;
         fetchingRef.current = true;
-
         try {
             setDataLoading(true);
-
             const [linksResult, statsResult] = await Promise.allSettled([
                 DashboardService.getLinks({ view, search: searchQuery }),
                 DashboardService.getStats(),
             ]);
-
             if (linksResult.status === 'fulfilled' && linksResult.value?.success) {
                 setLinks(linksResult.value.data?.links || []);
-            } else {
-                setLinks([]);
-            }
-
+            } else { setLinks([]); }
             if (statsResult.status === 'fulfilled' && statsResult.value?.success) {
                 const s = statsResult.value.data?.stats;
-                if (s) {
-                    setStats({
-                        all: s.all || 0,
-                        recent: s.recent || 0,
-                        starred: s.starred || 0,
-                        archive: s.archive || 0,
-                    });
-                }
+                if (s) setStats({ all: s.all || 0, recent: s.recent || 0, starred: s.starred || 0, archive: s.archive || 0 });
             }
         } catch (error) {
             console.error('Dashboard fetch error:', error);
@@ -133,30 +111,16 @@ export default function Dashboard() {
     // ── Keyboard shortcuts ──────────────────────────────
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault();
-                setIsCommandPaletteOpen(true);
-            }
-            if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
-                e.preventDefault();
-                setIsAddLinkOpen(true);
-            }
-            if (e.key === 'Escape') {
-                setIsCommandPaletteOpen(false);
-                setIsAddLinkOpen(false);
-            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setIsCommandPaletteOpen(true); }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); setIsAddLinkOpen(true); }
+            if (e.key === 'Escape') { setIsCommandPaletteOpen(false); setIsAddLinkOpen(false); }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    // ── Link Added Handler ──────────────────────────────
-    // AddLinkModal already calls the API, so we just need to:
-    // 1. Close the modal
-    // 2. Refresh the data
-    const handleLinkAdded = useCallback((linkData) => {
+    const handleLinkAdded = useCallback(() => {
         setIsAddLinkOpen(false);
-        // Reset fetch params to force refresh
         lastFetchParamsRef.current = { view: '', searchQuery: '' };
         fetchDashboardData();
     }, []);
@@ -169,9 +133,7 @@ export default function Dashboard() {
                 setLinks(links.map(l => (l.id === linkId ? result.data : l)));
                 toast.success('Link updated');
             }
-        } catch (error) {
-            toast.error(error.message || 'Failed to update link');
-        }
+        } catch (error) { toast.error(error.message || 'Failed to update link'); }
     };
 
     const handleDeleteLink = async (linkId) => {
@@ -180,12 +142,10 @@ export default function Dashboard() {
             await LinksService.deleteLink(linkId);
             toast.success('Link deleted');
             fetchDashboardData();
-        } catch (error) {
-            fetchDashboardData();
-            toast.error(error.message || 'Failed to delete link');
-        }
+        } catch (error) { fetchDashboardData(); toast.error(error.message || 'Failed to delete link'); }
     };
 
+    // ── Pin = sidebar / quick-access placement ──────────
     const handlePinLink = async (linkId) => {
         try {
             const link = links.find(l => l.id === linkId);
@@ -197,16 +157,28 @@ export default function Dashboard() {
                 toast.success('Link pinned');
             }
             fetchDashboardData();
-        } catch (error) {
-            toast.error(error.message || 'Failed to update pin status');
-        }
+        } catch (error) { toast.error(error.message || 'Failed to update pin'); }
+    };
+
+    // ── Star = favorite ─────────────────────────────────
+    const handleStarLink = async (linkId) => {
+        try {
+            const link = links.find(l => l.id === linkId);
+            if (link?.starred) {
+                await LinksService.unstarLink(linkId);
+                toast.success('Removed from favorites');
+            } else {
+                await LinksService.starLink(linkId);
+                toast.success('Added to favorites');
+            }
+            fetchDashboardData();
+        } catch (error) { toast.error(error.message || 'Failed to update favorite'); }
     };
 
     const handleArchiveLink = async (linkId) => {
         try {
             const link = links.find(l => l.id === linkId);
             setLinks(links.filter(l => l.id !== linkId));
-
             if (link?.archived) {
                 await LinksService.restoreLink(linkId);
                 toast.success('Link restored');
@@ -215,13 +187,9 @@ export default function Dashboard() {
                 toast.success('Link archived');
             }
             fetchDashboardData();
-        } catch (error) {
-            fetchDashboardData();
-            toast.error(error.message || 'Failed to archive link');
-        }
+        } catch (error) { fetchDashboardData(); toast.error(error.message || 'Failed to archive link'); }
     };
 
-    // ── Shared link view props ──────────────────────────
     const linkViewProps = {
         links,
         searchQuery,
@@ -229,6 +197,7 @@ export default function Dashboard() {
         onUpdateLink: handleUpdateLink,
         onDeleteLink: handleDeleteLink,
         onPinLink: handlePinLink,
+        onStarLink: handleStarLink,
         onArchiveLink: handleArchiveLink,
         onRefresh: () => setIsAddLinkOpen(true),
         loading: dataLoading,
@@ -248,33 +217,15 @@ export default function Dashboard() {
             onViewModeChange={handleViewModeChange}
         >
             <Routes>
-                {/* Home */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/home" element={<HomePage />} />
-
-                {/* My Files — receives viewMode */}
                 <Route path="/my-files" element={<MyFiles viewMode={viewMode} />} />
-
-                {/* Link Views */}
-                <Route
-                    path="/links/:filterView"
-                    element={<LinksPageWrapper {...linkViewProps} />}
-                />
-
-                {/* Collections */}
-                <Route
-                    path="/collections/:id"
-                    element={<div>Collection View</div>}
-                />
-
-                {/* Settings */}
+                <Route path="/links/:filterView" element={<LinksPageWrapper {...linkViewProps} />} />
+                <Route path="/collections/:id" element={<div>Collection View</div>} />
                 <Route path="/settings" element={<div>Settings</div>} />
-
-                {/* Fallback */}
                 <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
             </Routes>
 
-            {/* ── Global Modals ──────────────────────────── */}
             <AnimatePresence>
                 {isAddLinkOpen && (
                     <AddLinkModal
@@ -290,14 +241,8 @@ export default function Dashboard() {
                     <CommandPalette
                         isOpen={isCommandPaletteOpen}
                         onClose={() => setIsCommandPaletteOpen(false)}
-                        onAddLink={() => {
-                            setIsCommandPaletteOpen(false);
-                            setIsAddLinkOpen(true);
-                        }}
-                        onNavigate={(path) => {
-                            setIsCommandPaletteOpen(false);
-                            navigate(path);
-                        }}
+                        onAddLink={() => { setIsCommandPaletteOpen(false); setIsAddLinkOpen(true); }}
+                        onNavigate={(path) => { setIsCommandPaletteOpen(false); navigate(path); }}
                     />
                 )}
             </AnimatePresence>

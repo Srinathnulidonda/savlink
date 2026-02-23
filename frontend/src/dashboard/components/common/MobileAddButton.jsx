@@ -1,285 +1,158 @@
-// src/dashboard/components/header/MobileAddButton.jsx - Google Drive Style
-import { useState, useEffect } from 'react';
+// src/dashboard/components/common/MobileAddButton.jsx
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BOTTOM_NAV_HEIGHT } from './MobileBottomNav';
+
+const ACTIONS = [
+    {
+        id: 'add-link',
+        label: 'Save Link',
+        icon: (
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+            </svg>
+        ),
+        actionKey: 'onAddLink',
+    },
+    {
+        id: 'create-folder',
+        label: 'New Folder',
+        icon: (
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9m4.06-7.19l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+            </svg>
+        ),
+        actionKey: 'onCreateFolder',
+    },
+    {
+        id: 'import',
+        label: 'Import',
+        icon: (
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+        ),
+        actionKey: 'onImportLinks',
+    },
+];
 
 export default function MobileAddButton({
     onAddLink,
     onCreateFolder,
     onImportLinks,
-    position = 'auto',
-    useSafeArea = true,
-    customPosition = null
+    bottomOffset = BOTTOM_NAV_HEIGHT,
 }) {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [isVisible, setIsVisible] = useState(true);
-    const [lastScrollY, setLastScrollY] = useState(0);
 
-    // Mobile detection
     useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
     }, []);
 
-    // Scroll visibility logic
-    useEffect(() => {
-        const handleScroll = () => {
-            const currentScrollY = window.scrollY;
+    const handleAction = useCallback((action) => {
+        const handlers = { onAddLink, onCreateFolder, onImportLinks };
+        handlers[action.actionKey]?.();
+        setIsOpen(false);
+    }, [onAddLink, onCreateFolder, onImportLinks]);
 
-            if (currentScrollY > lastScrollY && currentScrollY > 100) {
-                setIsVisible(false);
-                setIsExpanded(false);
-            } else {
-                setIsVisible(true);
-            }
-
-            setLastScrollY(currentScrollY);
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, [lastScrollY]);
-
-    const getPositionStyles = () => {
-        if (customPosition) return customPosition;
-        
-        const safeAreaBottom = useSafeArea ? 'calc(env(safe-area-inset-bottom) + 20px)' : '20px';
-        
-        return {
-            bottom: safeAreaBottom,
-            right: '20px'
-        };
-    };
-
-    const actions = [
-        {
-            id: 'add-link',
-            label: 'Add Link',
-            icon: (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-                </svg>
-            ),
-            action: onAddLink,
-            color: 'bg-blue-600'
-        },
-        {
-            id: 'create-folder',
-            label: 'New Folder',
-            icon: (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
-            ),
-            action: onCreateFolder,
-            color: 'bg-amber-600'
-        },
-        {
-            id: 'import-links',
-            label: 'Import Links',
-            icon: (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                </svg>
-            ),
-            action: onImportLinks,
-            color: 'bg-emerald-600'
-        }
-    ];
-
-    const handleMainAction = () => {
-        setIsExpanded(!isExpanded);
-    };
-
-    const handleActionClick = (action) => {
-        action.action();
-        setIsExpanded(false);
-    };
-
-    // Don't render on desktop
     if (!isMobile) return null;
+
+    const fabBottom = `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px) + 14px)`;
 
     return (
         <>
             {/* Backdrop */}
             <AnimatePresence>
-                {isExpanded && (
+                {isOpen && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{
-                            duration: 0.2,
-                            ease: "easeOut"
-                        }}
-                        className="fixed inset-0 z-40 bg-black/10"
-                        onClick={() => setIsExpanded(false)}
+                        transition={{ duration: 0.15 }}
+                        className="fixed inset-0 z-[80] bg-black/50"
+                        onClick={() => setIsOpen(false)}
                     />
                 )}
             </AnimatePresence>
 
-            {/* Action Items Container */}
-            <div className="fixed z-50" style={getPositionStyles()}>
-                <AnimatePresence mode="wait">
-                    {isExpanded && (
+            {/* FAB Container */}
+            <div
+                className="fixed right-4 z-[90] flex flex-col items-end"
+                style={{ bottom: fabBottom }}
+            >
+                {/* Action Items */}
+                <AnimatePresence>
+                    {isOpen && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute bottom-16 right-0 flex flex-col-reverse gap-3"
+                            className="mb-3 flex flex-col gap-2 items-end"
                         >
-                            {actions.map((action, index) => (
-                                <motion.div
+                            {ACTIONS.map((action, idx) => (
+                                <motion.button
                                     key={action.id}
-                                    initial={{ 
-                                        scale: 0,
-                                        opacity: 0,
-                                        y: 20
-                                    }}
+                                    initial={{ opacity: 0, y: 10 }}
                                     animate={{
-                                        scale: 1,
                                         opacity: 1,
-                                        y: 0
+                                        y: 0,
+                                        transition: {
+                                            delay: (ACTIONS.length - 1 - idx) * 0.04,
+                                            duration: 0.18,
+                                        },
                                     }}
                                     exit={{
-                                        scale: 0,
                                         opacity: 0,
-                                        y: 10
+                                        y: 6,
+                                        transition: { duration: 0.1, delay: idx * 0.02 },
                                     }}
-                                    transition={{
-                                        type: "spring",
-                                        stiffness: 400,
-                                        damping: 25,
-                                        mass: 0.5,
-                                        delay: index * 0.05
-                                    }}
-                                    className="flex items-center justify-end gap-2"
+                                    whileTap={{ scale: 0.97 }}
+                                    onClick={() => handleAction(action)}
+                                    className="flex items-center gap-2.5 h-10 pl-4 pr-3
+                                               bg-[#1c1c1e] border border-white/[0.08]
+                                               rounded-full shadow-lg shadow-black/30
+                                               active:bg-[#2c2c2e] transition-colors"
                                 >
-                                    {/* Action Label */}
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.8, x: 10 }}
-                                        animate={{ opacity: 1, scale: 1, x: 0 }}
-                                        exit={{ opacity: 0, scale: 0.8, x: 10 }}
-                                        transition={{
-                                            type: "spring",
-                                            stiffness: 400,
-                                            damping: 25,
-                                            delay: index * 0.05 + 0.1
-                                        }}
-                                        className="bg-white px-3 py-2 rounded-full shadow-lg border border-gray-100"
-                                        style={{
-                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1)'
-                                        }}
-                                    >
-                                        <span className="text-xs font-medium text-gray-800 whitespace-nowrap">
-                                            {action.label}
-                                        </span>
-                                    </motion.div>
-
-                                    {/* Action Button */}
-                                    <motion.button
-                                        onClick={() => handleActionClick(action)}
-                                        whileHover={{ 
-                                            scale: 1.1,
-                                            transition: { duration: 0.2 }
-                                        }}
-                                        whileTap={{ 
-                                            scale: 0.95,
-                                            transition: { duration: 0.1 }
-                                        }}
-                                        className={`h-10 w-10 rounded-full ${action.color} hover:brightness-110 shadow-lg flex items-center justify-center relative overflow-hidden`}
-                                        style={{
-                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)'
-                                        }}
-                                    >
-                                        <div className="text-white relative z-10">
-                                            {action.icon}
-                                        </div>
-                                        
-                                        {/* Hover overlay */}
-                                        <motion.div
-                                            className="absolute inset-0 bg-white/20"
-                                            initial={{ scale: 0, opacity: 0 }}
-                                            whileHover={{ scale: 1, opacity: 1 }}
-                                            transition={{ duration: 0.2 }}
-                                        />
-                                    </motion.button>
-                                </motion.div>
+                                    <span className="text-[13px] font-medium text-white whitespace-nowrap">
+                                        {action.label}
+                                    </span>
+                                    <div className="w-7 h-7 rounded-full bg-white/[0.08]
+                                                    flex items-center justify-center text-white">
+                                        {action.icon}
+                                    </div>
+                                </motion.button>
                             ))}
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {/* Main FAB */}
+                {/* FAB Button */}
                 <motion.button
-                    onClick={handleMainAction}
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{
-                        scale: isVisible ? 1 : 0,
-                        y: isVisible ? 0 : 20,
-                        rotate: 0
-                    }}
-                    whileHover={{ 
-                        scale: 1.05,
-                        transition: { duration: 0.2, ease: "easeOut" }
-                    }}
-                    whileTap={{ 
-                        scale: 0.95,
-                        transition: { duration: 0.1 }
-                    }}
-                    className="h-12 w-12 rounded-full bg-gray-900 hover:bg-gray-800 shadow-lg flex items-center justify-center relative overflow-hidden"
-                    style={{
-                        boxShadow: isExpanded
-                            ? '0 8px 32px rgba(0, 0, 0, 0.25), 0 4px 16px rgba(0, 0, 0, 0.15)'
-                            : '0 6px 24px rgba(0, 0, 0, 0.2), 0 3px 12px rgba(0, 0, 0, 0.12)'
-                    }}
+                    onClick={() => setIsOpen((p) => !p)}
+                    whileTap={{ scale: 0.9 }}
+                    className="h-11 w-11 rounded-full flex items-center justify-center
+                               bg-[#0A2A8F] shadow-lg shadow-black/25
+                               outline-none touch-manipulation
+                               active:bg-[#081f6b] transition-colors"
+                    aria-label={isOpen ? 'Close' : 'Create new'}
                 >
-                    {/* Plus/Close Icon */}
                     <motion.svg
                         className="h-5 w-5 text-white"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
                         strokeWidth={2.5}
-                        animate={{ 
-                            rotate: isExpanded ? 45 : 0,
-                            scale: isExpanded ? 0.9 : 1
-                        }}
-                        transition={{
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 20
-                        }}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        animate={{ rotate: isOpen ? 45 : 0 }}
+                        transition={{ type: 'spring', stiffness: 350, damping: 25 }}
                     >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
                     </motion.svg>
-
-                    {/* Ripple effect */}
-                    <motion.div 
-                        className="absolute inset-0 rounded-full bg-white/20"
-                        initial={{ scale: 0, opacity: 0 }}
-                        whileTap={{ 
-                            scale: 1.2, 
-                            opacity: [0.3, 0],
-                            transition: { duration: 0.4 }
-                        }}
-                    />
-
-                    {/* Background gradient animation */}
-                    <motion.div
-                        className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-700/20 to-transparent"
-                        animate={{
-                            scale: isExpanded ? 1.1 : 1,
-                            opacity: isExpanded ? 0.8 : 0
-                        }}
-                        transition={{
-                            duration: 0.3,
-                            ease: "easeOut"
-                        }}
-                    />
                 </motion.button>
             </div>
         </>

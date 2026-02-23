@@ -1,18 +1,36 @@
 # server/app/auth/firebase.py
+
 import json
 import os
+import time
 import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
 from typing import Optional, Dict, Any
-from app.auth.redis import cache_firebase_token, get_cached_firebase_token
+from app.auth.redis import (
+    cache_token_verification,
+    get_cached_token_verification,
+    invalidate_token_cache
+)
 import logging
 
 logger = logging.getLogger(__name__)
 
 _firebase_app = None
+_initialization_lock = None
+
+# ─── Performance Metrics ──────────────────────────────────────────────
+_metrics = {
+    'cache_hits': 0,
+    'cache_misses': 0,
+    'verifications': 0,
+    'errors': 0
+}
+
 
 def initialize_firebase():
+    """Initialize Firebase Admin SDK (idempotent)."""
     global _firebase_app
+    
     if _firebase_app:
         return _firebase_app
     
@@ -24,52 +42,100 @@ def initialize_firebase():
         config_dict = json.loads(config_json)
         cred = credentials.Certificate(config_dict)
         _firebase_app = firebase_admin.initialize_app(cred)
+        logger.info("✅ Firebase Admin SDK initialized")
+        return _firebase_app
+    except ValueError:
+        # Already initialized
+        _firebase_app = firebase_admin.get_app()
         return _firebase_app
     except Exception as e:
-        raise ValueError(f"Failed to initialize Firebase: {str(e)}")
+        raise ValueError(f"Failed to initialize Firebase: {e}")
+
 
 def verify_id_token(token: str) -> Optional[Dict[str, Any]]:
-    """Verify Firebase ID token with optional Redis caching"""
+    """
+    Verify Firebase ID token with Redis caching.
+    
+    Flow:
+    1. Check Redis cache (fast path: ~1-5ms)
+    2. If miss, verify with Firebase Admin SDK (~200-500ms)
+    3. Cache result in Redis for 5 minutes
+    
+    Returns decoded token data or None if invalid.
+    """
+    if not token or len(token) < 100:
+        return None
+    
+    # ── Step 1: Check Redis cache ──
+    cached = get_cached_token_verification(token)
+    if cached:
+        _metrics['cache_hits'] += 1
+        return cached
+    
+    _metrics['cache_misses'] += 1
+    
+    # ── Step 2: Verify with Firebase ──
     try:
-        # Check cache first (best-effort)
-        cached_data = get_cached_firebase_token(token)
-        if cached_data:
-            logger.debug("Firebase token found in cache")
-            return cached_data
-        
-        # Initialize Firebase if needed
         initialize_firebase()
         
-        # Verify with Firebase
-        decoded_token = firebase_auth.verify_id_token(token)
+        start = time.time()
+        decoded_token = firebase_auth.verify_id_token(token, check_revoked=True)
+        duration = (time.time() - start) * 1000
         
-        # Cache the result (best-effort, don't fail if Redis is down)
-        try:
-            cache_firebase_token(token, decoded_token)
-        except Exception as e:
-            logger.debug(f"Failed to cache Firebase token: {e}")
+        _metrics['verifications'] += 1
+        
+        if duration > 1000:
+            logger.warning(f"Slow Firebase verification: {duration:.0f}ms")
+        else:
+            logger.debug(f"Firebase verification: {duration:.0f}ms")
+        
+        # ── Step 3: Cache the result ──
+        cache_token_verification(token, decoded_token)
         
         return decoded_token
         
     except firebase_auth.ExpiredIdTokenError:
-        logger.debug("Firebase token expired")
+        logger.debug("Token expired")
+        invalidate_token_cache(token)
         return None
     except firebase_auth.RevokedIdTokenError:
-        logger.debug("Firebase token revoked")
+        logger.warning("Token revoked")
+        invalidate_token_cache(token)
         return None
     except firebase_auth.InvalidIdTokenError:
-        logger.debug("Firebase token invalid")
+        logger.debug("Token invalid")
+        return None
+    except firebase_auth.CertificateFetchError as e:
+        # Network issue fetching Google's public keys
+        logger.error(f"Firebase certificate fetch error: {e}")
+        _metrics['errors'] += 1
         return None
     except Exception as e:
-        logger.error(f"Firebase token verification error: {e}")
+        logger.error(f"Firebase verification error: {e}")
+        _metrics['errors'] += 1
         return None
 
+
 def extract_user_info(decoded_token: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract user information from decoded Firebase token"""
+    """Extract normalized user info from decoded token (cached or fresh)."""
     return {
         'uid': decoded_token.get('uid'),
         'email': decoded_token.get('email'),
         'name': decoded_token.get('name'),
         'picture': decoded_token.get('picture'),
-        'auth_provider': decoded_token.get('firebase', {}).get('sign_in_provider', 'password')
+        'email_verified': decoded_token.get('email_verified', False),
+        'auth_provider': decoded_token.get('provider', 
+                          decoded_token.get('firebase', {}).get('sign_in_provider', 'password'))
+    }
+
+
+def get_verification_metrics() -> Dict[str, Any]:
+    """Get verification performance metrics."""
+    total = _metrics['cache_hits'] + _metrics['cache_misses']
+    hit_rate = (_metrics['cache_hits'] / total * 100) if total > 0 else 0
+    
+    return {
+        **_metrics,
+        'total_requests': total,
+        'cache_hit_rate': f"{hit_rate:.1f}%"
     }

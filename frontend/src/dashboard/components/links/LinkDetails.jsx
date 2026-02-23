@@ -17,6 +17,7 @@ export default function LinkDetails({
     onUpdate,
     onDelete,
     onPin,
+    onStar,
     onArchive,
 }) {
     const [copiedField, setCopiedField] = useState(null);
@@ -142,10 +143,11 @@ export default function LinkDetails({
 
                     {/* ── Title area ─────────────────────── */}
                     <div className="px-5 pt-5 pb-4">
-                        {/* Badges */}
-                        {(link.pinned || link.archived || link.is_public || link.link_type === 'shortened') && (
+                        {/* Badges — starred and pinned are separate */}
+                        {(link.starred || link.pinned || link.archived || link.is_public || link.link_type === 'shortened') && (
                             <div className="flex flex-wrap gap-1.5 mb-3">
-                                {link.pinned && <StatusBadge icon="★" label="Starred" color="amber" />}
+                                {link.starred && <StatusBadge icon="★" label="Starred" color="amber" />}
+                                {link.pinned && <StatusBadge icon="📌" label="Pinned" color="blue" />}
                                 {link.archived && <StatusBadge label="Archived" color="gray" />}
                                 {link.is_public && <StatusBadge label="Public" color="green" />}
                                 {link.link_type === 'shortened' && <StatusBadge label="Short link" color="blue" />}
@@ -271,13 +273,27 @@ export default function LinkDetails({
                                 </span>
                             </Row>
 
+                            {/* ── Starred = favorite ─────── */}
                             <Row label="Starred">
+                                <button
+                                    onClick={onStar}
+                                    className="flex items-center gap-1.5 transition-opacity hover:opacity-80"
+                                >
+                                    <StarRowIcon filled={link.starred} />
+                                    <span className={link.starred ? 'text-amber-400' : 'text-gray-500'}>
+                                        {link.starred ? 'Yes' : 'No'}
+                                    </span>
+                                </button>
+                            </Row>
+
+                            {/* ── Pinned = quick-access ──── */}
+                            <Row label="Pinned">
                                 <button
                                     onClick={onPin}
                                     className="flex items-center gap-1.5 transition-opacity hover:opacity-80"
                                 >
-                                    <StarIcon filled={link.pinned} />
-                                    <span className={link.pinned ? 'text-amber-400' : 'text-gray-500'}>
+                                    <PinRowIcon filled={link.pinned} />
+                                    <span className={link.pinned ? 'text-blue-400' : 'text-gray-500'}>
                                         {link.pinned ? 'Yes' : 'No'}
                                     </span>
                                 </button>
@@ -371,17 +387,23 @@ export default function LinkDetails({
                         Open link
                     </button>
 
-                    {/* Secondary */}
+                    {/* Star + Pin */}
                     <div className="grid grid-cols-2 gap-2">
-                        <ActionBtn onClick={onPin}>
-                            <StarIcon filled={link.pinned} size={14} />
-                            {link.pinned ? 'Unstar' : 'Star'}
+                        <ActionBtn onClick={onStar}>
+                            <StarRowIcon filled={link.starred} size={14} />
+                            {link.starred ? 'Unstar' : 'Star'}
                         </ActionBtn>
-                        <ActionBtn onClick={onArchive}>
-                            <ArchiveIcon />
-                            {link.archived ? 'Restore' : 'Archive'}
+                        <ActionBtn onClick={onPin}>
+                            <PinRowIcon filled={link.pinned} size={14} />
+                            {link.pinned ? 'Unpin' : 'Pin'}
                         </ActionBtn>
                     </div>
+
+                    {/* Archive */}
+                    <ActionBtn onClick={onArchive} fullWidth>
+                        <ArchiveIcon />
+                        {link.archived ? 'Restore' : 'Archive'}
+                    </ActionBtn>
 
                     {/* Danger */}
                     <button
@@ -460,15 +482,16 @@ function CopyPill({ label, copied, onClick, highlight = false }) {
     );
 }
 
-function ActionBtn({ onClick, children }) {
+function ActionBtn({ onClick, children, fullWidth = false }) {
     return (
         <button
             onClick={onClick}
-            className="h-9 flex items-center justify-center gap-1.5
+            className={`h-9 flex items-center justify-center gap-1.5
                 text-[12px] font-medium text-gray-400
                 bg-white/[0.02] border border-white/[0.06]
                 hover:bg-white/[0.05] hover:text-gray-200
-                rounded-lg transition-colors"
+                rounded-lg transition-colors
+                ${fullWidth ? 'w-full' : ''}`}
         >
             {children}
         </button>
@@ -478,9 +501,9 @@ function ActionBtn({ onClick, children }) {
 function StatusBadge({ icon, label, color }) {
     const c = {
         amber:  'bg-amber-500/10 text-amber-400 border-amber-500/15',
+        blue:   'bg-blue-500/10 text-blue-400 border-blue-500/15',
         gray:   'bg-white/[0.04] text-gray-400 border-white/[0.06]',
         green:  'bg-emerald-500/10 text-emerald-400 border-emerald-500/15',
-        blue:   'bg-blue-500/10 text-blue-400 border-blue-500/15',
     };
     return (
         <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold
@@ -510,7 +533,7 @@ function EditPencil({ className = '' }) {
 
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ICONS — minimal 16×16
+// ICONS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 function ExternalIcon() {
@@ -545,7 +568,8 @@ function CloseIcon() {
     );
 }
 
-function StarIcon({ filled, size = 14 }) {
+// ── Star icon (favorite) ────────────────────────────────
+function StarRowIcon({ filled, size = 14 }) {
     return (
         <svg
             style={{ width: size, height: size }}
@@ -556,6 +580,27 @@ function StarIcon({ filled, size = 14 }) {
             strokeWidth={1.5}
         >
             <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+        </svg>
+    );
+}
+
+// ── Pin icon (quick-access) ─────────────────────────────
+function PinRowIcon({ filled, size = 14 }) {
+    return (
+        <svg
+            style={{ width: size, height: size }}
+            className={filled ? 'text-blue-400' : 'text-gray-600'}
+            viewBox="0 0 16 16"
+            fill={filled ? 'currentColor' : 'none'}
+            stroke={filled ? 'none' : 'currentColor'}
+            strokeWidth={1}
+        >
+            <path d="M4.146.146A.5.5 0 014.5 0h7a.5.5 0 01.5.5c0
+                     .68-.342 1.174-.646 1.479-.126.125-.25.224-.354.298v4.431l.078.048c.203.127.476.314.751.555C12.36
+                     7.775 13 8.527 13 9.5a.5.5 0 01-.5.5h-4v4.5a.5.5 0
+                     01-1 0V10h-4A.5.5 0 013 9.5c0-.973.64-1.725
+                     1.17-2.189A5.92 5.92 0 015 6.708V2.277a2.77 2.77 0
+                     01-.354-.298C4.342 1.674 4 1.179 4 .5a.5.5 0 01.146-.354z" />
         </svg>
     );
 }

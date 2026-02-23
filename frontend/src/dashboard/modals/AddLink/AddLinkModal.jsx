@@ -28,20 +28,19 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
     useEffect(() => {
         const detectScreen = () => {
             const width = window.innerWidth;
-            const height = window.innerHeight;
-            
+
             if (width >= 768) {
                 setScreenType('desktop');
             } else if (width >= 640) {
                 setScreenType('tablet');
             } else if (width >= 430) {
-                setScreenType('large-mobile'); // iPhone Pro Max, etc.
+                setScreenType('large-mobile');
             } else if (width >= 390) {
-                setScreenType('medium-mobile'); // iPhone 14, 15, etc.
+                setScreenType('medium-mobile');
             } else if (width >= 375) {
-                setScreenType('small-mobile'); // iPhone SE, older iPhones
+                setScreenType('small-mobile');
             } else {
-                setScreenType('mini-mobile'); // Very small devices
+                setScreenType('mini-mobile');
             }
         };
 
@@ -57,7 +56,6 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
         const detectKeyboard = () => {
             const viewportHeight = window.visualViewport?.height || window.innerHeight;
             const windowHeight = window.innerHeight;
-            // Keyboard is likely open if viewport is significantly smaller
             setKeyboardOpen(viewportHeight < windowHeight * 0.75);
         };
 
@@ -81,8 +79,7 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
             setUrlMeta(null);
             lastFetchedUrl.current = '';
             clearError();
-            
-            // Delay focus to prevent keyboard issues
+
             const timer = setTimeout(() => {
                 if (screenType === 'desktop' || screenType === 'tablet') {
                     urlInputRef.current?.focus();
@@ -90,7 +87,7 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
             }, 300);
             return () => clearTimeout(timer);
         }
-        
+
         if (!isOpen) {
             isInitialized.current = false;
         }
@@ -105,7 +102,7 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
             document.body.style.left = '0';
             document.body.style.right = '0';
             document.body.style.overflow = 'hidden';
-            
+
             return () => {
                 document.body.style.position = '';
                 document.body.style.top = '';
@@ -120,7 +117,7 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
     // ── Escape to close ─────────────────────────────────
     useEffect(() => {
         if (!isOpen) return;
-        
+
         const handler = (e) => {
             if (e.key === 'Escape') {
                 e.preventDefault();
@@ -131,7 +128,7 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                 handleSubmitRef.current?.();
             }
         };
-        
+
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
     }, [isOpen, onClose, url]);
@@ -161,11 +158,11 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
             setFetchingMeta(true);
             const domain = urlObj.hostname.replace('www.', '');
             const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-            
+
             lastFetchedUrl.current = trimmedUrl;
             setUrlMeta({ domain, favicon });
             setFetchingMeta(false);
-            
+
             if (!title.trim()) {
                 setTitle(domain);
             }
@@ -215,7 +212,7 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
     // ── Submit ──────────────────────────────────────────
     const handleSubmit = useCallback(async (e) => {
         e?.preventDefault();
-        
+
         const trimmedUrl = url.trim();
         if (!trimmedUrl || loading) return;
 
@@ -242,16 +239,18 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
     // ── Responsive styles ───────────────────────────────
     const getModalStyles = () => {
         const isMobile = ['mini-mobile', 'small-mobile', 'medium-mobile', 'large-mobile'].includes(screenType);
-        
+
         if (isMobile) {
+            const pad = screenType === 'mini-mobile' ? 'p-3' : 'p-4';
+            const headerPad = screenType === 'mini-mobile' ? 'px-3 py-2.5' : 'px-4 py-3';
             return {
-                wrapper: 'items-end', // Bottom sheet style on mobile
-                modal: 'w-full max-w-full rounded-t-2xl rounded-b-none max-h-[92vh]',
-                padding: screenType === 'mini-mobile' ? 'p-4' : 'p-5',
-                headerPadding: screenType === 'mini-mobile' ? 'px-4 py-3' : 'px-5 py-4',
+                wrapper: 'items-end',
+                modal: 'w-screen rounded-t-2xl rounded-b-none max-h-[92vh]',
+                padding: pad,
+                headerPadding: headerPad,
             };
         }
-        
+
         return {
             wrapper: 'items-center pt-0',
             modal: 'w-full max-w-[520px] rounded-xl mx-4 max-h-[85vh]',
@@ -263,12 +262,12 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
     const getInputStyles = () => {
         switch (screenType) {
             case 'mini-mobile':
-                return { height: 'h-11', text: 'text-[15px]', label: 'text-[11px]' };
+                return { height: 'h-10', text: 'text-[14px]', label: 'text-[11px]' };
             case 'small-mobile':
-                return { height: 'h-12', text: 'text-[15px]', label: 'text-[12px]' };
+                return { height: 'h-10', text: 'text-[14px]', label: 'text-[11px]' };
             case 'medium-mobile':
             case 'large-mobile':
-                return { height: 'h-12', text: 'text-[16px]', label: 'text-[12px]' };
+                return { height: 'h-11', text: 'text-[15px]', label: 'text-[11px]' };
             default:
                 return { height: 'h-11', text: 'text-[14px]', label: 'text-[12px]' };
         }
@@ -277,6 +276,7 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
     const styles = getModalStyles();
     const inputStyles = getInputStyles();
     const isMobile = ['mini-mobile', 'small-mobile', 'medium-mobile', 'large-mobile'].includes(screenType);
+    const isSmallMobile = ['mini-mobile', 'small-mobile'].includes(screenType);
 
     if (!isOpen) return null;
 
@@ -297,19 +297,19 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                     onClick={(e) => e.target === e.currentTarget && onClose()}
                 >
                     <motion.div
-                        initial={isMobile 
-                            ? { y: '100%', opacity: 1 } 
+                        initial={isMobile
+                            ? { y: '100%', opacity: 1 }
                             : { opacity: 0, scale: 0.96, y: 10 }
                         }
-                        animate={isMobile 
-                            ? { y: 0, opacity: 1 } 
+                        animate={isMobile
+                            ? { y: 0, opacity: 1 }
                             : { opacity: 1, scale: 1, y: 0 }
                         }
-                        exit={isMobile 
-                            ? { y: '100%', opacity: 1 } 
+                        exit={isMobile
+                            ? { y: '100%', opacity: 1 }
                             : { opacity: 0, scale: 0.96, y: 10 }
                         }
-                        transition={isMobile 
+                        transition={isMobile
                             ? { type: 'spring', damping: 30, stiffness: 350 }
                             : { duration: 0.2, ease: [0.16, 1, 0.3, 1] }
                         }
@@ -321,42 +321,43 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                                 onClose();
                             }
                         }}
-                        className={`bg-[#111] border-t border-x border-gray-800/60 
-                                   shadow-2xl shadow-black/50 overflow-hidden flex flex-col
+                        className={`bg-[#111] shadow-2xl shadow-black/50 overflow-hidden flex flex-col
+                                   ${isMobile ? 'border-t border-gray-800/60' : 'border-t border-x border-gray-800/60'}
                                    ${styles.modal}`}
                         style={{
                             paddingBottom: isMobile ? 'env(safe-area-inset-bottom)' : '0',
+                            margin: isMobile ? 0 : undefined,
                         }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* ── Drag Handle (Mobile) ───────────── */}
                         {isMobile && (
-                            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-                                <div className="w-10 h-1 rounded-full bg-gray-700" />
+                            <div className="flex justify-center pt-2 pb-0.5 flex-shrink-0">
+                                <div className="w-8 h-1 rounded-full bg-gray-700" />
                             </div>
                         )}
 
                         {/* ── Header ─────────────────────────── */}
                         <div className={`flex items-center justify-between border-b border-gray-800/40 
                                         flex-shrink-0 ${styles.headerPadding}`}>
-                            <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
                                 <div className={`rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0
-                                                ${isMobile ? 'w-9 h-9' : 'w-8 h-8'}`}>
-                                    <svg className={isMobile ? 'w-4.5 h-4.5' : 'w-4 h-4'} 
-                                         fill="none" viewBox="0 0 24 24" 
+                                                ${isMobile ? 'w-7 h-7' : 'w-8 h-8'}`}>
+                                    <svg className={isMobile ? 'w-3.5 h-3.5' : 'w-4 h-4'}
+                                         fill="none" viewBox="0 0 24 24"
                                          stroke="currentColor" strokeWidth={2}
                                          style={{ color: 'var(--color-primary, #6366f1)' }}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" 
+                                        <path strokeLinecap="round" strokeLinejoin="round"
                                               d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
                                     </svg>
                                 </div>
                                 <div className="min-w-0">
                                     <h2 className={`font-semibold text-white truncate
-                                                   ${isMobile ? 'text-[16px]' : 'text-[15px]'}`}>
+                                                   ${isMobile ? 'text-[14px]' : 'text-[15px]'}`}>
                                         {linkType === 'shortened' ? 'Shorten Link' : 'Save Link'}
                                     </h2>
-                                    <p className={`text-gray-500 mt-0.5 truncate
-                                                  ${isMobile ? 'text-[12px]' : 'text-[11px]'}`}>
+                                    <p className={`text-gray-500 truncate
+                                                  ${isMobile ? 'text-[11px] mt-0' : 'text-[11px] mt-0.5'}`}>
                                         {linkType === 'shortened' ? 'Create a short URL' : 'Save to your collection'}
                                     </p>
                                 </div>
@@ -365,9 +366,9 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                                 onClick={onClose}
                                 className={`text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] 
                                            rounded-lg transition-colors flex-shrink-0
-                                           ${isMobile ? 'p-2.5 -mr-1.5' : 'p-2 -mr-1'}`}
+                                           ${isMobile ? 'p-2 -mr-1' : 'p-2 -mr-1'}`}
                             >
-                                <svg className={isMobile ? 'w-5 h-5' : 'w-4 h-4'} 
+                                <svg className={isMobile ? 'w-4 h-4' : 'w-4 h-4'}
                                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -375,7 +376,7 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                         </div>
 
                         {/* ── Scrollable Content ─────────────── */}
-                        <div 
+                        <div
                             ref={modalContentRef}
                             className={`flex-1 overflow-y-auto overscroll-contain ${styles.padding}`}
                             style={{
@@ -383,44 +384,49 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                             }}
                         >
                             <form onSubmit={handleSubmit} className="flex flex-col">
-                                
+
                                 {/* Link Type Toggle */}
-                                <div className={`flex items-center gap-1.5 p-1.5 bg-gray-900/50 rounded-xl
-                                                ${isMobile ? 'mb-5' : 'mb-5'}`}>
+                                <div className={`flex items-center gap-1 p-1 bg-gray-900/50 rounded-xl
+                                                ${isMobile ? 'mb-3.5' : 'mb-5'}`}>
                                     <TypeButton
                                         active={linkType === 'saved'}
                                         onClick={() => setLinkType('saved')}
                                         label="Save"
-                                        icon={<BookmarkIcon />}
+                                        icon={<BookmarkIcon small={isMobile} />}
                                         isMobile={isMobile}
+                                        isSmallMobile={isSmallMobile}
                                     />
                                     <TypeButton
                                         active={linkType === 'shortened'}
                                         onClick={() => setLinkType('shortened')}
                                         label="Shorten"
-                                        icon={<LinkIcon />}
+                                        icon={<LinkIcon small={isMobile} />}
                                         isMobile={isMobile}
+                                        isSmallMobile={isSmallMobile}
                                     />
                                 </div>
 
                                 {/* URL Input */}
-                                <div className={isMobile ? 'mb-5' : 'mb-4'}>
-                                    <label className={`block font-medium text-gray-400 mb-2 ${inputStyles.label}`}>
+                                <div className={isMobile ? 'mb-3.5' : 'mb-4'}>
+                                    <label className={`block font-medium text-gray-400 ${inputStyles.label}
+                                                      ${isMobile ? 'mb-1.5' : 'mb-2'}`}>
                                         URL
                                     </label>
                                     <div className="relative">
-                                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center">
+                                        <div className={`absolute top-1/2 -translate-y-1/2 flex items-center
+                                                        ${isMobile ? 'left-3' : 'left-3.5'}`}>
                                             {fetchingMeta ? (
-                                                <div className="w-4 h-4 border-2 border-gray-700 border-t-primary rounded-full animate-spin" />
+                                                <div className={`border-2 border-gray-700 border-t-primary rounded-full animate-spin
+                                                                ${isMobile ? 'w-3.5 h-3.5' : 'w-4 h-4'}`} />
                                             ) : urlMeta?.favicon ? (
-                                                <img 
-                                                    src={urlMeta.favicon} 
-                                                    alt="" 
-                                                    className="w-4 h-4 rounded"
+                                                <img
+                                                    src={urlMeta.favicon}
+                                                    alt=""
+                                                    className={`rounded ${isMobile ? 'w-3.5 h-3.5' : 'w-4 h-4'}`}
                                                     onError={(e) => { e.target.style.display = 'none'; }}
                                                 />
                                             ) : (
-                                                <GlobeIcon className="w-4 h-4 text-gray-600" />
+                                                <GlobeIcon className={`text-gray-600 ${isMobile ? 'w-3.5 h-3.5' : 'w-4 h-4'}`} />
                                             )}
                                         </div>
                                         <input
@@ -429,12 +435,13 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                                             value={url}
                                             onChange={(e) => { setUrl(e.target.value); clearError(); }}
                                             placeholder="https://example.com"
-                                            className={`w-full pl-11 pr-[70px] text-white 
+                                            className={`w-full text-white 
                                                        bg-gray-900/50 border rounded-xl
                                                        placeholder-gray-600 outline-none transition-all
+                                                       ${isMobile ? 'pl-9 pr-[52px]' : 'pl-11 pr-[70px]'}
                                                        ${inputStyles.height} ${inputStyles.text}
-                                                       ${error 
-                                                           ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' 
+                                                       ${error
+                                                           ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                                                            : 'border-gray-800 focus:border-primary/50 focus:ring-2 focus:ring-primary/20'
                                                        }`}
                                             autoComplete="off"
@@ -446,34 +453,35 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                                         <button
                                             type="button"
                                             onClick={handlePaste}
-                                            className={`absolute right-2 top-1/2 -translate-y-1/2 
-                                                       font-medium text-gray-500 
-                                                       hover:text-gray-300 bg-gray-800/60 hover:bg-gray-800 
-                                                       rounded-lg transition-colors active:scale-95
-                                                       ${isMobile ? 'px-3 py-2 text-[12px]' : 'px-2.5 py-1.5 text-[11px]'}`}
+                                            className={`absolute right-1 top-1/2 -translate-y-1/2 
+                                                       font-medium transition-colors active:scale-95
+                                                       ${isMobile 
+                                                           ? 'text-[11px] text-primary hover:text-primary-light' 
+                                                           : 'px-2.5 py-1.5 text-[11px] text-gray-500 hover:text-gray-300 bg-gray-800/60 hover:bg-gray-800 rounded-lg'}`}
                                         >
                                             Paste
                                         </button>
                                     </div>
                                     {error && (
-                                        <p className={`mt-2 text-red-400 flex items-center gap-1.5
-                                                      ${isMobile ? 'text-[12px]' : 'text-[11px]'}`}>
-                                            <WarningIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                                        <p className={`mt-1.5 text-red-400 flex items-center gap-1.5
+                                                      ${isMobile ? 'text-[11px]' : 'text-[11px]'}`}>
+                                            <WarningIcon className="w-3 h-3 flex-shrink-0" />
                                             {error}
                                         </p>
                                     )}
                                     {urlMeta && !error && (
-                                        <p className={`mt-2 text-emerald-500 flex items-center gap-1.5
-                                                      ${isMobile ? 'text-[12px]' : 'text-[11px]'}`}>
-                                            <CheckIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                                        <p className={`mt-1.5 text-emerald-500 flex items-center gap-1.5
+                                                      ${isMobile ? 'text-[11px]' : 'text-[11px]'}`}>
+                                            <CheckIcon className="w-3 h-3 flex-shrink-0" />
                                             {urlMeta.domain}
                                         </p>
                                     )}
                                 </div>
 
                                 {/* Title Input */}
-                                <div className={isMobile ? 'mb-5' : 'mb-4'}>
-                                    <label className={`block font-medium text-gray-400 mb-2 ${inputStyles.label}`}>
+                                <div className={isMobile ? 'mb-3.5' : 'mb-4'}>
+                                    <label className={`block font-medium text-gray-400 ${inputStyles.label}
+                                                      ${isMobile ? 'mb-1.5' : 'mb-2'}`}>
                                         Title <span className="text-gray-600 font-normal">(optional)</span>
                                     </label>
                                     <input
@@ -481,7 +489,7 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
                                         placeholder="Enter a title"
-                                        className={`w-full px-3.5 text-white 
+                                        className={`w-full px-3 text-white 
                                                    bg-gray-900/50 border border-gray-800 rounded-xl
                                                    placeholder-gray-600 outline-none transition-all
                                                    focus:border-primary/50 focus:ring-2 focus:ring-primary/20
@@ -494,16 +502,16 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                                 <button
                                     type="button"
                                     onClick={() => setShowAdvanced(!showAdvanced)}
-                                    className={`flex items-center gap-2 text-gray-500 
+                                    className={`flex items-center gap-1.5 text-gray-500 
                                                hover:text-gray-300 active:text-gray-200 
                                                transition-colors touch-manipulation
-                                               ${isMobile ? 'text-[13px] mb-4 py-1' : 'text-[12px] mb-4'}`}
+                                               ${isMobile ? 'text-[12px] mb-3 py-0.5' : 'text-[12px] mb-4'}`}
                                 >
-                                    <motion.svg 
-                                        className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}
-                                        fill="none" 
-                                        viewBox="0 0 24 24" 
-                                        stroke="currentColor" 
+                                    <motion.svg
+                                        className={isMobile ? 'w-3 h-3' : 'w-3.5 h-3.5'}
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
                                         strokeWidth={2}
                                         animate={{ rotate: showAdvanced ? 90 : 0 }}
                                         transition={{ duration: 0.15 }}
@@ -523,18 +531,19 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                                             transition={{ duration: 0.2 }}
                                             className="overflow-hidden"
                                         >
-                                            <div className={`space-y-4 ${isMobile ? 'pb-4' : 'pb-4'}`}>
+                                            <div className={`${isMobile ? 'space-y-3 pb-3' : 'space-y-4 pb-4'}`}>
                                                 {/* Notes */}
                                                 <div>
-                                                    <label className={`block font-medium text-gray-400 mb-2 ${inputStyles.label}`}>
+                                                    <label className={`block font-medium text-gray-400 ${inputStyles.label}
+                                                                      ${isMobile ? 'mb-1.5' : 'mb-2'}`}>
                                                         Notes
                                                     </label>
                                                     <textarea
                                                         value={notes}
                                                         onChange={(e) => setNotes(e.target.value)}
                                                         placeholder="Add a note..."
-                                                        rows={isMobile ? 4 : 3}
-                                                        className={`w-full px-3.5 py-3 text-white 
+                                                        rows={isMobile ? 3 : 3}
+                                                        className={`w-full px-3 py-2.5 text-white 
                                                                    bg-gray-900/50 border border-gray-800 rounded-xl
                                                                    placeholder-gray-600 outline-none transition-all
                                                                    focus:border-primary/50 focus:ring-2 focus:ring-primary/20
@@ -544,21 +553,22 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
 
                                                 {/* Tags */}
                                                 <div>
-                                                    <label className={`block font-medium text-gray-400 mb-2 ${inputStyles.label}`}>
+                                                    <label className={`block font-medium text-gray-400 ${inputStyles.label}
+                                                                      ${isMobile ? 'mb-1.5' : 'mb-2'}`}>
                                                         Tags <span className="text-gray-600 font-normal">(max 5)</span>
                                                     </label>
-                                                    <div className={`flex flex-wrap items-center gap-2 p-3
+                                                    <div className={`flex flex-wrap items-center gap-1.5
                                                                    bg-gray-900/50 border border-gray-800 rounded-xl
                                                                    focus-within:border-primary/50 focus-within:ring-2 
                                                                    focus-within:ring-primary/20 transition-all
-                                                                   ${isMobile ? 'min-h-[52px]' : 'min-h-[44px]'}`}>
+                                                                   ${isMobile ? 'p-2.5 min-h-[42px]' : 'p-3 min-h-[44px]'}`}>
                                                         {tags.map((tag) => (
                                                             <span
                                                                 key={tag}
-                                                                className={`inline-flex items-center gap-1.5 
+                                                                className={`inline-flex items-center gap-1 
                                                                            text-gray-300 bg-gray-800 
-                                                                           border border-gray-700/50 rounded-lg
-                                                                           ${isMobile ? 'px-2.5 py-1.5 text-[13px]' : 'px-2 py-1 text-[12px]'}`}
+                                                                           border border-gray-700/50 rounded-md
+                                                                           ${isMobile ? 'px-2 py-1 text-[11px]' : 'px-2 py-1 text-[12px]'}`}
                                                             >
                                                                 {tag}
                                                                 <button
@@ -567,9 +577,9 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                                                                     className="text-gray-500 hover:text-gray-300 
                                                                                transition-colors p-0.5"
                                                                 >
-                                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" 
-                                                                         stroke="currentColor" strokeWidth={2}>
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" 
+                                                                    <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24"
+                                                                         stroke="currentColor" strokeWidth={2.5}>
+                                                                        <path strokeLinecap="round" strokeLinejoin="round"
                                                                               d="M6 18L18 6M6 6l12 12" />
                                                                     </svg>
                                                                 </button>
@@ -582,15 +592,15 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                                                                 onChange={(e) => setTagInput(e.target.value)}
                                                                 onKeyDown={handleTagKeyDown}
                                                                 placeholder={tags.length === 0 ? "Add tags..." : ""}
-                                                                className={`flex-1 min-w-[100px] bg-transparent text-white 
+                                                                className={`flex-1 min-w-[80px] bg-transparent text-white 
                                                                            placeholder-gray-600 outline-none
-                                                                           ${isMobile ? 'text-[14px]' : 'text-[13px]'}`}
+                                                                           ${isMobile ? 'text-[13px]' : 'text-[13px]'}`}
                                                                 enterKeyHint="done"
                                                             />
                                                         )}
                                                     </div>
-                                                    <p className={`mt-1.5 text-gray-600 
-                                                                  ${isMobile ? 'text-[11px]' : 'text-[10px]'}`}>
+                                                    <p className={`mt-1 text-gray-600 
+                                                                  ${isMobile ? 'text-[10px]' : 'text-[10px]'}`}>
                                                         Press Enter or comma to add
                                                     </p>
                                                 </div>
@@ -602,12 +612,12 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                         </div>
 
                         {/* ── Footer ─────────────────────────── */}
-                        <div 
+                        <div
                             className={`flex-shrink-0 border-t border-gray-800/40 
-                                       ${styles.padding} ${isMobile ? 'pb-2' : ''}`}
+                                       ${isMobile ? 'px-4 pt-3 pb-1' : styles.padding}`}
                             style={{
-                                paddingBottom: isMobile 
-                                    ? 'max(env(safe-area-inset-bottom), 16px)' 
+                                paddingBottom: isMobile
+                                    ? 'max(env(safe-area-inset-bottom), 12px)'
                                     : undefined,
                             }}
                         >
@@ -654,21 +664,23 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                                 </div>
                             )}
 
-                            {/* Mobile: Full-width buttons stacked */}
+                            {/* Mobile: Compact buttons */}
                             {isMobile && (
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     <button
                                         onClick={handleSubmit}
                                         disabled={!url.trim() || loading}
-                                        className="w-full py-3.5 text-[15px] font-semibold text-white 
+                                        className={`w-full font-semibold text-white 
                                                    bg-primary hover:bg-primary-light active:brightness-90
                                                    disabled:opacity-50 disabled:cursor-not-allowed
-                                                   rounded-xl transition-all flex items-center justify-center gap-2"
+                                                   rounded-xl transition-all flex items-center justify-center gap-2
+                                                   ${isSmallMobile ? 'py-2.5 text-[13px]' : 'py-3 text-[14px]'}`}
                                     >
                                         {loading ? (
                                             <>
-                                                <div className="w-4 h-4 border-2 border-white/30 
-                                                                border-t-white rounded-full animate-spin" />
+                                                <div className={`border-2 border-white/30 
+                                                                border-t-white rounded-full animate-spin
+                                                                ${isSmallMobile ? 'w-3.5 h-3.5' : 'w-4 h-4'}`} />
                                                 Saving...
                                             </>
                                         ) : (
@@ -678,9 +690,10 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
                                     <button
                                         type="button"
                                         onClick={onClose}
-                                        className="w-full py-3 text-[14px] font-medium text-gray-400 
+                                        className={`w-full font-medium text-gray-400 
                                                    hover:text-gray-200 active:bg-white/[0.05] 
-                                                   rounded-xl transition-colors"
+                                                   rounded-xl transition-colors
+                                                   ${isSmallMobile ? 'py-2 text-[12px]' : 'py-2.5 text-[13px]'}`}
                                     >
                                         Cancel
                                     </button>
@@ -696,16 +709,21 @@ export default function AddLinkModal({ isOpen, onClose, onSubmit }) {
 
 // ── Sub Components ──────────────────────────────────────────
 
-function TypeButton({ active, onClick, icon, label, isMobile }) {
+function TypeButton({ active, onClick, icon, label, isMobile, isSmallMobile }) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`flex-1 flex items-center justify-center gap-2 
+            className={`flex-1 flex items-center justify-center gap-1.5 
                        font-medium rounded-lg transition-all active:scale-[0.98]
-                       ${isMobile ? 'px-4 py-3 text-[14px]' : 'px-3 py-2.5 text-[13px]'}
-                       ${active 
-                           ? 'bg-white/[0.1] text-white shadow-sm' 
+                       ${isSmallMobile
+                           ? 'px-3 py-2 text-[12px]'
+                           : isMobile
+                               ? 'px-3 py-2.5 text-[13px]'
+                               : 'px-3 py-2.5 text-[13px]'
+                       }
+                       ${active
+                           ? 'bg-white/[0.1] text-white shadow-sm'
                            : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.03] active:bg-white/[0.05]'
                        }`}
         >
@@ -717,17 +735,17 @@ function TypeButton({ active, onClick, icon, label, isMobile }) {
 
 // ── Icons ───────────────────────────────────────────────────
 
-function BookmarkIcon() {
+function BookmarkIcon({ small }) {
     return (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className={small ? 'w-3.5 h-3.5' : 'w-4 h-4'} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
         </svg>
     );
 }
 
-function LinkIcon() {
+function LinkIcon({ small }) {
     return (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className={small ? 'w-3.5 h-3.5' : 'w-4 h-4'} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
         </svg>
     );

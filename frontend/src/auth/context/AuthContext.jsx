@@ -1,238 +1,189 @@
 // frontend/src/auth/context/AuthContext.jsx
-import { createContext, useContext, useState, useEffect } from 'react';
-import { auth } from '../../config/firebase';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  signInWithPopup,
-  GoogleAuthProvider,
-  sendPasswordResetEmail,
-  updateProfile
-} from 'firebase/auth';
-import apiService from '../../utils/api';
-import toast from 'react-hot-toast';
+// Clean React wrapper around AuthService - NO duplicate auth management
 
-const AuthContext = createContext({});
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import { AuthService } from '../services/auth.service'
+import apiService from '../../utils/api'
+import toast from 'react-hot-toast'
+
+const AuthContext = createContext(null)
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth must be used within AuthProvider')
+  return context
+}
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
+  const [user, setUser] = useState(() => {
+    // Restore cached user for instant UI
+    try {
+      const cached = localStorage.getItem('savlink_user')
+      return cached ? JSON.parse(cached) : null
+    } catch { return null }
+  })
+  const [loading, setLoading] = useState(true)
+  const [initialized, setInitialized] = useState(false)
+  const mountedRef = useRef(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
-          const token = await firebaseUser.getIdToken();
-          apiService.setAuthToken(token);
-          
-          const userData = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0],
-            avatar_url: firebaseUser.photoURL,
-            email_verified: firebaseUser.emailVerified,
-          };
-          
-          localStorage.setItem('user', JSON.stringify(userData));
-          setUser(userData);
-          console.log('🔐 User authenticated:', userData.email);
-        } else {
-          apiService.removeAuthToken();
-          localStorage.removeItem('user');
-          setUser(null);
-          console.log('🔓 User signed out');
-        }
-      } catch (error) {
-        console.error('🔥 Auth state change error:', error);
-        apiService.removeAuthToken();
-        localStorage.removeItem('user');
-        setUser(null);
-      } finally {
-        setLoading(false);
-        setInitialized(true);
-      }
-    });
+    mountedRef.current = true
 
-    const existingToken = apiService.getAuthToken();
-    const existingUser = localStorage.getItem('user');
-    
-    if (existingToken && existingUser && !initialized) {
-      try {
-        const userData = JSON.parse(existingUser);
-        apiService.setAuthToken(existingToken);
-        setUser(userData);
-        console.log('🔄 Restored auth state for:', userData.email);
-      } catch (error) {
-        console.error('🔥 Failed to restore auth state:', error);
-        apiService.removeAuthToken();
-        localStorage.removeItem('user');
+    // Subscribe to AuthService state changes (SINGLE source of truth)
+    const unsubscribe = AuthService.onAuthStateChange(({ user: authUser, token }) => {
+      if (!mountedRef.current) return
+
+      if (authUser) {
+        setUser(authUser)
+        // Keep api.js in sync
+        if (token) apiService.setAuthToken(token)
+      } else {
+        setUser(null)
+        apiService.removeAuthToken()
       }
+      
+      setLoading(false)
+      setInitialized(true)
+    })
+
+    // Ensure AuthService is initialized
+    AuthService.ensureInitialized().then(() => {
+      if (mountedRef.current) {
+        setLoading(false)
+        setInitialized(true)
+      }
+    })
+
+    // Timeout safety: don't show loading forever
+    const safetyTimer = setTimeout(() => {
+      if (mountedRef.current && loading) {
+        setLoading(false)
+        setInitialized(true)
+      }
+    }, 5000)
+
+    return () => {
+      mountedRef.current = false
+      unsubscribe()
+      clearTimeout(safetyTimer)
     }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    return unsubscribe;
-  }, [initialized]);
-
-  const signIn = async (email, password) => {
+  // ── Auth Methods ──
+  const signIn = useCallback(async (email, password, rememberMe = true) => {
+    setLoading(true)
     try {
-      setLoading(true);
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      toast.success('Welcome back!');
-      return { success: true, user: result.user };
-    } catch (error) {
-      console.error('🔥 Sign in error:', error);
-      let message = 'Failed to sign in';
+      const result = await AuthService.login({ email, password, rememberMe })
       
-      switch (error.code) {
-        case 'auth/user-not-found':
-          message = 'No account found with this email';
-          break;
-        case 'auth/wrong-password':
-          message = 'Incorrect password';
-          break;
-        case 'auth/invalid-email':
-          message = 'Invalid email address';
-          break;
-        case 'auth/user-disabled':
-          message = 'This account has been disabled';
-          break;
-        case 'auth/too-many-requests':
-          message = 'Too many failed attempts. Please try again later.';
-          break;
-        default:
-          message = error.message || 'Failed to sign in';
+      if (result.success) {
+        toast.success(result.message || 'Welcome back!')
       }
       
-      toast.error(message);
-      return { success: false, error: message };
+      return result
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }, [])
 
-  const signUp = async (email, password, name) => {
+  const signUp = useCallback(async (email, password, name) => {
+    setLoading(true)
     try {
-      setLoading(true);
-      const result = await createUserWithEmailAndPassword(auth, email, password);
+      const result = await AuthService.register({ email, password, name })
       
-      if (name) {
-        await updateProfile(result.user, { displayName: name });
+      if (result.success) {
+        toast.success(result.message || 'Account created!')
       }
       
-      toast.success('Account created successfully!');
-      return { success: true, user: result.user };
-    } catch (error) {
-      console.error('🔥 Sign up error:', error);
-      let message = 'Failed to create account';
-      
-      switch (error.code) {
-        case 'auth/email-already-in-use':
-          message = 'An account with this email already exists';
-          break;
-        case 'auth/invalid-email':
-          message = 'Invalid email address';
-          break;
-        case 'auth/weak-password':
-          message = 'Password is too weak';
-          break;
-        default:
-          message = error.message || 'Failed to create account';
-      }
-      
-      toast.error(message);
-      return { success: false, error: message };
+      return result
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }, [])
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
+    setLoading(true)
     try {
-      setLoading(true);
-      const provider = new GoogleAuthProvider();
-      provider.addScope('email');
-      provider.addScope('profile');
-      
-      const result = await signInWithPopup(auth, provider);
-      toast.success('Welcome!');
-      return { success: true, user: result.user };
-    } catch (error) {
-      console.error('🔥 Google sign in error:', error);
-      
-      if (error.code === 'auth/popup-closed-by-user') {
-        return { success: false, error: null };
+      const result = await AuthService.loginWithGoogle()
+
+      if (result.cancelled) {
+        return result
+      }
+
+      if (result.pending) {
+        return result
       }
       
-      const message = error.message || 'Failed to sign in with Google';
-      toast.error(message);
-      return { success: false, error: message };
+      if (result.success) {
+        toast.success(result.message || 'Welcome!')
+      }
+      
+      return result
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }, [])
 
-  const signOut = async () => {
+  const signOutUser = useCallback(async () => {
     try {
-      await firebaseSignOut(auth);
-      toast.success('Signed out successfully');
-      return { success: true };
-    } catch (error) {
-      console.error('🔥 Sign out error:', error);
-      const message = error.message || 'Failed to sign out';
-      toast.error(message);
-      return { success: false, error: message };
-    }
-  };
-
-  const resetPassword = async (email) => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-      toast.success('Password reset email sent!');
-      return { success: true };
-    } catch (error) {
-      console.error('🔥 Password reset error:', error);
-      let message = 'Failed to send reset email';
+      const result = await AuthService.logout()
       
-      switch (error.code) {
-        case 'auth/user-not-found':
-          message = 'No account found with this email';
-          break;
-        case 'auth/invalid-email':
-          message = 'Invalid email address';
-          break;
-        default:
-          message = error.message || 'Failed to send reset email';
+      if (result.success) {
+        toast.success('Signed out successfully')
       }
       
-      toast.error(message);
-      return { success: false, error: message };
+      return result
+    } catch (error) {
+      toast.error('Failed to sign out')
+      return { success: false, error: error.message }
     }
-  };
+  }, [])
+
+  const resetPassword = useCallback(async (email) => {
+    try {
+      const result = await AuthService.resetPassword(email)
+      
+      if (result.success) {
+        toast.success('Password reset email sent!')
+      } else {
+        toast.error(result.error?.message || 'Failed to send reset email')
+      }
+      
+      return result
+    } catch (error) {
+      toast.error('Failed to send reset email')
+      return { success: false, error: error.message }
+    }
+  }, [])
+
+  // ── Listen for session expiry from AuthService ──
+  useEffect(() => {
+    const handleExpiry = () => {
+      toast.error('Session expired. Please sign in again.')
+      setUser(null)
+    }
+
+    window.addEventListener('auth:session-expired', handleExpiry)
+    return () => window.removeEventListener('auth:session-expired', handleExpiry)
+  }, [])
 
   const value = {
     user,
     loading,
     initialized,
+    isFromCache: user && !user._synced,
+    isSynced: user?._synced === true,
     signIn,
     signUp,
     signInWithGoogle,
-    signOut,
-    resetPassword
-  };
+    signOut: signOutUser,
+    resetPassword,
+    forceSync: AuthService.forceSync.bind(AuthService),
+    getToken: AuthService.getIdToken.bind(AuthService)
+  }
 
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
-  );
+  )
 }

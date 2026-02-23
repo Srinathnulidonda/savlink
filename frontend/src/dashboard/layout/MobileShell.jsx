@@ -5,6 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 import HeaderMobile from '../components/header/HeaderMobile';
 import MobileMenu from './MobileMenu';
 import MobileAddButton from '../components/common/MobileAddButton';
+import MobileBottomNav, { BOTTOM_NAV_HEIGHT } from '../components/common/MobileBottomNav';
 
 export default function MobileShell({
     user,
@@ -15,10 +16,9 @@ export default function MobileShell({
     searchQuery,
     onAddLink,
     onOpenCommandPalette,
-    collections,
-    activeCollection,
-    onCollectionChange,
-    onCreateCollection,
+    folders,
+    onTogglePin,
+    onToggleStar,
     children,
 }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -29,49 +29,61 @@ export default function MobileShell({
     }, [isMobileMenuOpen]);
 
     return (
-        <div className="flex h-screen bg-black overflow-hidden relative">
+        <div className="flex h-[100dvh] bg-black overflow-hidden relative">
             <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Header */}
-                <header className="flex-shrink-0 border-b border-gray-800/40 bg-[#0a0a0a]/80 
-                                   backdrop-blur-sm safe-area-top">
+                <header
+                    className="flex-shrink-0 border-b border-gray-800/40
+                               bg-[#0a0a0a]/95 relative z-30"
+                    style={{
+                        paddingTop: 'env(safe-area-inset-top, 0px)',
+                        backdropFilter: 'blur(16px)',
+                        WebkitBackdropFilter: 'blur(16px)',
+                    }}
+                >
                     <HeaderMobile
                         user={user}
-                        activeView={activeView}
-                        stats={stats}
+                        searchQuery={searchQuery}
+                        onSearch={onSearch}
                         onMenuClick={() => setIsMobileMenuOpen(true)}
                         onOpenCommandPalette={onOpenCommandPalette}
                     />
                 </header>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto bg-black safe-area-bottom">
+                <div
+                    className="flex-1 overflow-y-auto bg-black
+                               overscroll-contain
+                               -webkit-overflow-scrolling-touch"
+                    style={{
+                        paddingBottom: `calc(${BOTTOM_NAV_HEIGHT}px + env(safe-area-inset-bottom, 0px) + 8px)`,
+                    }}
+                >
                     {children}
                 </div>
             </div>
 
-            {/* FAB */}
-            <MobileAddButton onAddLink={onAddLink} useSafeArea />
+            <MobileBottomNav />
 
-            {/* Mobile Menu */}
+            <MobileAddButton
+                onAddLink={onAddLink}
+                useSafeArea
+                bottomOffset={BOTTOM_NAV_HEIGHT}
+            />
+
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <MobileMenu
                         isOpen={isMobileMenuOpen}
                         onClose={() => setIsMobileMenuOpen(false)}
-                        user={user}
                         stats={stats}
                         activeView={activeView}
                         onViewChange={(view) => {
                             onViewChange(view);
                             setIsMobileMenuOpen(false);
                         }}
-                        collections={collections || []}
-                        activeCollection={activeCollection}
-                        onCollectionChange={(id) => {
-                            onCollectionChange?.(id);
-                            setIsMobileMenuOpen(false);
-                        }}
-                        onCreateCollection={onCreateCollection}
+                        folders={folders || []}
+                        onTogglePin={onTogglePin}
+                        onToggleStar={onToggleStar}
+                        onAddLink={onAddLink}
                     />
                 )}
             </AnimatePresence>

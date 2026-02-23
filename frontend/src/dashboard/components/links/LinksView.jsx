@@ -1,7 +1,7 @@
 // src/dashboard/components/links/LinksView.jsx
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence, useDragControls } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ContextMenuProvider } from '../common/ContextMenu';
 import { getDomain, getFavicon, formatUrl, timeAgo } from './LinkMeta';
 import LinkCard from './LinkCard';
@@ -27,6 +27,7 @@ export default function LinksView({
     onUpdateLink,
     onDeleteLink,
     onPinLink,
+    onStarLink,
     onArchiveLink,
     onRefresh,
     loading = false,
@@ -265,6 +266,7 @@ export default function LinksView({
                                             onSelect={(e) => toggleSelect(link.id, e)}
                                             onSelectById={toggleSelectById}
                                             onPin={() => onPinLink(link.id)}
+                                            onStar={() => onStarLink(link.id)}
                                             onArchive={() => onArchiveLink(link.id)}
                                             onDelete={() => onDeleteLink(link.id)}
                                         />
@@ -287,6 +289,7 @@ export default function LinksView({
                             onUpdate={onUpdateLink}
                             onDelete={(id) => { onDeleteLink(id); closeDetails(); }}
                             onPin={() => onPinLink(selectedLink.id)}
+                            onStar={() => onStarLink(selectedLink.id)}
                             onArchive={() => onArchiveLink(selectedLink.id)}
                         />
                     )}
@@ -300,6 +303,7 @@ export default function LinksView({
                             onClose={closeDetails}
                             onUpdate={onUpdateLink}
                             onPin={() => onPinLink(selectedLink.id)}
+                            onStar={() => onStarLink(selectedLink.id)}
                             onArchive={() => { onArchiveLink(selectedLink.id); closeDetails(); }}
                             onDelete={() => { onDeleteLink(selectedLink.id); closeDetails(); }}
                         />
@@ -315,7 +319,7 @@ export default function LinksView({
 // MOBILE BOTTOM SHEET
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-function MobileLinkSheet({ link, onClose, onUpdate, onPin, onArchive, onDelete }) {
+function MobileLinkSheet({ link, onClose, onUpdate, onPin, onStar, onArchive, onDelete }) {
     const [faviconErr, setFaviconErr] = useState(false);
 
     const domain   = getDomain(link.original_url);
@@ -413,11 +417,14 @@ function MobileLinkSheet({ link, onClose, onUpdate, onPin, onArchive, onDelete }
                                     </span>
                                 </div>
 
-                                {/* Badges */}
-                                {(link.pinned || link.archived || link.link_type === 'shortened') && (
+                                {/* Badges — starred and pinned are separate */}
+                                {(link.starred || link.pinned || link.archived || link.link_type === 'shortened') && (
                                     <div className="flex flex-wrap gap-1.5 mt-2">
-                                        {link.pinned && (
+                                        {link.starred && (
                                             <MobileBadge color="amber">★ Starred</MobileBadge>
+                                        )}
+                                        {link.pinned && (
+                                            <MobileBadge color="blue">📌 Pinned</MobileBadge>
                                         )}
                                         {link.archived && (
                                             <MobileBadge color="gray">Archived</MobileBadge>
@@ -481,14 +488,26 @@ function MobileLinkSheet({ link, onClose, onUpdate, onPin, onArchive, onDelete }
                             />
                         </div>
 
-                        {/* Secondary row */}
+                        {/* Star + Pin row */}
                         <div className="grid grid-cols-2 gap-2.5 mt-2.5">
                             <SheetAction
-                                icon={<StarIcon filled={link.pinned} />}
-                                label={link.pinned ? 'Unstar' : 'Star'}
+                                icon={<StarIcon filled={link.starred} />}
+                                label={link.starred ? 'Unstar' : 'Star'}
+                                onClick={onStar}
+                                active={link.starred}
+                                activeColor="amber"
+                            />
+                            <SheetAction
+                                icon={<PinIcon filled={link.pinned} />}
+                                label={link.pinned ? 'Unpin' : 'Pin'}
                                 onClick={onPin}
                                 active={link.pinned}
+                                activeColor="blue"
                             />
+                        </div>
+
+                        {/* Archive */}
+                        <div className="grid grid-cols-1 gap-2.5 mt-2.5">
                             <SheetAction
                                 icon={<ArchiveIcon />}
                                 label={link.archived ? 'Restore' : 'Archive'}
@@ -539,7 +558,12 @@ function MobileLinkSheet({ link, onClose, onUpdate, onPin, onArchive, onDelete }
 
 // ── Sheet action button ─────────────────────────────────
 
-function SheetAction({ icon, label, onClick, primary = false, active = false }) {
+function SheetAction({ icon, label, onClick, primary = false, active = false, activeColor = 'amber' }) {
+    const activeColors = {
+        amber: 'bg-amber-500/10 text-amber-400 border border-amber-500/20 active:bg-amber-500/20',
+        blue:  'bg-blue-500/10 text-blue-400 border border-blue-500/20 active:bg-blue-500/20',
+    };
+
     return (
         <button
             onClick={onClick}
@@ -549,7 +573,7 @@ function SheetAction({ icon, label, onClick, primary = false, active = false }) 
                        ${primary
                     ? 'bg-primary text-white active:bg-primary-light'
                     : active
-                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 active:bg-amber-500/20'
+                        ? activeColors[activeColor]
                         : 'bg-white/[0.03] text-gray-300 border border-white/[0.06] active:bg-white/[0.06]'
                 }`}
         >
@@ -638,6 +662,23 @@ function StarIcon({ filled }) {
             stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round"
                 d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+        </svg>
+    );
+}
+
+function PinIcon({ filled }) {
+    return (
+        <svg className={`w-4 h-4 ${filled ? 'text-blue-400' : ''}`}
+            viewBox="0 0 16 16"
+            fill={filled ? 'currentColor' : 'none'}
+            stroke={filled ? 'none' : 'currentColor'}
+            strokeWidth={1}>
+            <path d="M4.146.146A.5.5 0 014.5 0h7a.5.5 0 01.5.5c0
+                     .68-.342 1.174-.646 1.479-.126.125-.25.224-.354.298v4.431l.078.048c.203.127.476.314.751.555C12.36
+                     7.775 13 8.527 13 9.5a.5.5 0 01-.5.5h-4v4.5a.5.5 0
+                     01-1 0V10h-4A.5.5 0 013 9.5c0-.973.64-1.725
+                     1.17-2.189A5.92 5.92 0 015 6.708V2.277a2.77 2.77 0
+                     01-.354-.298C4.342 1.674 4 1.179 4 .5a.5.5 0 01.146-.354z" />
         </svg>
     );
 }

@@ -5,36 +5,22 @@ import { motion } from 'framer-motion';
 import { useContextMenu } from '../common/ContextMenu';
 import { useLinkContextMenu } from './useLinkContextMenu';
 import LinkActions from './LinkActions';
-import toast from 'react-hot-toast';
 
-// ── Utility functions ───────────────────────────────────
 function getDomain(url) {
-    try {
-        return new URL(url).hostname.replace('www.', '');
-    } catch {
-        return '';
-    }
+    try { return new URL(url).hostname.replace('www.', ''); } catch { return ''; }
 }
-
 function getFavicon(url) {
     const domain = getDomain(url);
-    if (!domain) return null;
-    // Use Google S2 favicon service - most reliable
-    return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+    return domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : null;
 }
-
-
 function formatUrl(url) {
     try {
         const u = new URL(url);
         const path = u.pathname === '/' ? '' : u.pathname;
         const display = u.hostname.replace('www.', '') + path;
         return display.length > 60 ? display.slice(0, 57) + '…' : display;
-    } catch {
-        return url;
-    }
+    } catch { return url; }
 }
-
 function timeAgo(dateStr) {
     if (!dateStr) return '';
     try {
@@ -49,12 +35,9 @@ function timeAgo(dateStr) {
         if (day < 7) return `${day}d`;
         if (day < 30) return `${Math.floor(day / 7)}w`;
         return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    } catch {
-        return '';
-    }
+    } catch { return ''; }
 }
 
-// ── Main Component with forwardRef ──────────────────────
 const LinkCard = memo(forwardRef(function LinkCard({
     link,
     index,
@@ -68,6 +51,7 @@ const LinkCard = memo(forwardRef(function LinkCard({
     onSelect,
     onSelectById,
     onPin,
+    onStar,
     onArchive,
     onDelete,
 }, ref) {
@@ -76,6 +60,7 @@ const LinkCard = memo(forwardRef(function LinkCard({
     const contextMenu = useContextMenu();
     const { getMenuItems } = useLinkContextMenu({
         onPin,
+        onStar,
         onArchive,
         onDelete,
         onSelect: () => onSelectById?.(link.id),
@@ -86,55 +71,33 @@ const LinkCard = memo(forwardRef(function LinkCard({
     const displayUrl = formatUrl(link.original_url);
     const time = link.relative_time || timeAgo(link.created_at);
 
-    // ── Context menu ────────────────────────────────────
-    const handleContextMenu = useCallback(
-        (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!contextMenu?.open) return;
-            contextMenu.open(e, getMenuItems(link), { linkId: link.id });
-        },
-        [contextMenu, getMenuItems, link],
-    );
+    const handleContextMenu = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!contextMenu?.open) return;
+        contextMenu.open(e, getMenuItems(link), { linkId: link.id });
+    }, [contextMenu, getMenuItems, link]);
 
-    const handleCheckbox = useCallback(
-        (e) => {
-            e.stopPropagation();
-            onSelect?.(e);
-        },
-        [onSelect],
-    );
+    const handleCheckbox = useCallback((e) => {
+        e.stopPropagation();
+        onSelect?.(e);
+    }, [onSelect]);
 
-    // ── Long press for mobile select ────────────────────
     const [longPressTimer, setLongPressTimer] = useState(null);
-
     const handleTouchStart = useCallback(() => {
-        const timer = setTimeout(() => {
-            onSelectById?.(link.id);
-        }, 500);
+        const timer = setTimeout(() => onSelectById?.(link.id), 500);
         setLongPressTimer(timer);
     }, [link.id, onSelectById]);
-
     const handleTouchEnd = useCallback(() => {
-        if (longPressTimer) {
-            clearTimeout(longPressTimer);
-            setLongPressTimer(null);
-        }
+        if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null); }
     }, [longPressTimer]);
 
-    // ── Favicon ─────────────────────────────────────────
     const FaviconImg = ({ className = '' }) => (
-        <div className={`rounded-lg bg-white/[0.04] border border-white/[0.04] 
+        <div className={`rounded-lg bg-white/[0.04] border border-white/[0.04]
                          flex items-center justify-center flex-shrink-0 overflow-hidden ${className}`}>
             {faviconUrl && !faviconError ? (
-                <img
-                    src={faviconUrl}
-                    alt=""
-                    className="w-4 h-4 sm:w-5 sm:h-5"
-                    onError={() => setFaviconError(true)}
-                    loading="lazy"
-                    draggable={false}
-                />
+                <img src={faviconUrl} alt="" className="w-4 h-4 sm:w-5 sm:h-5"
+                    onError={() => setFaviconError(true)} loading="lazy" draggable={false} />
             ) : (
                 <span className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase">
                     {domain?.[0] || '?'}
@@ -143,18 +106,13 @@ const LinkCard = memo(forwardRef(function LinkCard({
         </div>
     );
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // LIST VIEW
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ━━━ LIST VIEW ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (viewMode === 'list') {
         return (
             <motion.div
-                ref={ref}
-                layout
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.12 }}
+                ref={ref} layout
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.12 }}
                 onClick={onClick}
                 onContextMenu={handleContextMenu}
                 onTouchStart={handleTouchStart}
@@ -162,120 +120,75 @@ const LinkCard = memo(forwardRef(function LinkCard({
                 onTouchCancel={handleTouchEnd}
                 onMouseEnter={() => onHover?.(link.id)}
                 onMouseLeave={() => onHover?.(null)}
-                role="option"
-                aria-selected={isSelected || isActive}
+                role="option" aria-selected={isSelected || isActive}
                 className={`group flex items-center cursor-pointer select-none
                     transition-colors duration-75 touch-manipulation
-                    gap-2 sm:gap-3
-                    px-2.5 sm:px-4
-                    py-2 sm:py-2.5
-                    rounded-lg
+                    gap-2 sm:gap-3 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg
                     ${isFocused ? 'ring-1 ring-primary/30' : ''}
-                    ${isActive
-                        ? 'bg-primary/[0.06]'
-                        : isSelected
-                            ? 'bg-blue-500/[0.05]'
-                            : 'hover:bg-white/[0.02] active:bg-white/[0.04]'
-                    }`}
+                    ${isActive ? 'bg-primary/[0.06]'
+                        : isSelected ? 'bg-blue-500/[0.05]'
+                        : 'hover:bg-white/[0.02] active:bg-white/[0.04]'}`}
                 style={{
-                    paddingLeft:  'max(env(safe-area-inset-left, 0px), 0.625rem)',
+                    paddingLeft: 'max(env(safe-area-inset-left, 0px), 0.625rem)',
                     paddingRight: 'max(env(safe-area-inset-right, 0px), 0.625rem)',
                 }}
             >
-                {/* ── Checkbox ───────────────────────────── */}
-                <div
-                    className={`flex-shrink-0 transition-all duration-150
-                        ${isSelectMode || isSelected
-                            ? 'w-4 opacity-100'
-                            : 'w-0 overflow-hidden opacity-0 sm:w-4 sm:group-hover:opacity-50'
-                        }`}
-                >
+                <div className={`flex-shrink-0 transition-all duration-150
+                    ${isSelectMode || isSelected
+                        ? 'w-4 opacity-100'
+                        : 'w-0 overflow-hidden opacity-0 sm:w-4 sm:group-hover:opacity-50'}`}>
                     <Checkbox checked={isSelected} onClick={handleCheckbox} />
                 </div>
 
-                {/* ── Favicon ─────────────────────────────── */}
                 <FaviconImg className="w-7 h-7 sm:w-8 sm:h-8" />
 
-                {/* ── Content ─────────────────────────────── */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1 sm:gap-1.5">
-                        <span className="text-[12px] sm:text-[13px] font-medium text-gray-200 
+                        <span className="text-[12px] sm:text-[13px] font-medium text-gray-200
                                         truncate group-hover:text-white transition-colors">
                             {link.title || 'Untitled'}
                         </span>
-                        {link.pinned && <StarBadge />}
+                        {link.starred && <StarBadge />}
+                        {link.pinned && <PinBadge />}
                         {link.link_type === 'shortened' && (
-                            <span className="text-[8px] sm:text-[9px] font-medium text-primary/80 
-                                            bg-primary/10 px-1 py-px rounded flex-shrink-0">
-                                SHORT
-                            </span>
+                            <span className="text-[8px] sm:text-[9px] font-medium text-primary/80
+                                            bg-primary/10 px-1 py-px rounded flex-shrink-0">SHORT</span>
                         )}
                     </div>
-
-                    {/* URL + time on mobile */}
                     <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-[10px] sm:text-[11px] text-gray-600 truncate">
-                            {displayUrl}
-                        </span>
-                        <span className="text-[10px] text-gray-700 flex-shrink-0 sm:hidden">
-                            · {time}
-                        </span>
+                        <span className="text-[10px] sm:text-[11px] text-gray-600 truncate">{displayUrl}</span>
+                        <span className="text-[10px] text-gray-700 flex-shrink-0 sm:hidden">· {time}</span>
                     </div>
                 </div>
 
-                {/* ── Metadata — tablet+ ──────────────────── */}
                 <div className="hidden sm:flex items-center gap-3 md:gap-4 flex-shrink-0">
                     {link.tags?.length > 0 && (
                         <div className="hidden md:flex gap-1">
-                            {link.tags.slice(0, 2).map((t) => (
-                                <Tag key={t}>{t}</Tag>
-                            ))}
-                            {link.tags.length > 2 && (
-                                <span className="text-[10px] text-gray-600">
-                                    +{link.tags.length - 2}
-                                </span>
-                            )}
+                            {link.tags.slice(0, 2).map((t) => <Tag key={t}>{t}</Tag>)}
+                            {link.tags.length > 2 && <span className="text-[10px] text-gray-600">+{link.tags.length - 2}</span>}
                         </div>
                     )}
-
                     {link.click_count > 0 && (
-                        <span className="text-[11px] text-gray-500 tabular-nums 
-                                        min-w-[28px] text-right hidden lg:block">
+                        <span className="text-[11px] text-gray-500 tabular-nums min-w-[28px] text-right hidden lg:block">
                             {link.click_count}
                         </span>
                     )}
-
-                    <span className="text-[11px] text-gray-600 tabular-nums 
-                                    min-w-[32px] text-right">
-                        {time}
-                    </span>
+                    <span className="text-[11px] text-gray-600 tabular-nums min-w-[32px] text-right">{time}</span>
                 </div>
 
-                {/* ── Actions ─────────────────────────────── */}
-                <div className="flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 
-                               transition-opacity">
-                    <LinkActions
-                        link={link}
-                        onPin={onPin}
-                        onArchive={onArchive}
-                        onDelete={onDelete}
-                    />
+                <div className="flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <LinkActions link={link} onPin={onPin} onStar={onStar} onArchive={onArchive} onDelete={onDelete} />
                 </div>
             </motion.div>
         );
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // GRID VIEW
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ━━━ GRID VIEW ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     return (
         <motion.div
-            ref={ref}
-            layout
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97 }}
-            transition={{ duration: 0.15 }}
+            ref={ref} layout
+            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.15 }}
             onClick={onClick}
             onContextMenu={handleContextMenu}
             onTouchStart={handleTouchStart}
@@ -283,59 +196,41 @@ const LinkCard = memo(forwardRef(function LinkCard({
             onTouchCancel={handleTouchEnd}
             onMouseEnter={() => onHover?.(link.id)}
             onMouseLeave={() => onHover?.(null)}
-            role="option"
-            aria-selected={isSelected || isActive}
+            role="option" aria-selected={isSelected || isActive}
             className={`group relative rounded-xl cursor-pointer select-none
                 transition-all duration-100 touch-manipulation
                 ${isFocused ? 'ring-2 ring-primary/30' : ''}
-                ${isActive
-                    ? 'ring-1 ring-primary/20 bg-white/[0.03]'
-                    : isSelected
-                        ? 'ring-1 ring-blue-500/20 bg-white/[0.02]'
-                        : 'border border-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.015] active:bg-white/[0.03]'
-                }`}
+                ${isActive ? 'ring-1 ring-primary/20 bg-white/[0.03]'
+                    : isSelected ? 'ring-1 ring-blue-500/20 bg-white/[0.02]'
+                    : 'border border-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.015] active:bg-white/[0.03]'}`}
         >
             {/* Header */}
             <div className="flex items-center justify-between px-3 pt-3 pb-1.5 sm:px-4 sm:pt-4 sm:pb-2">
                 <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                     <FaviconImg className="w-8 h-8 sm:w-9 sm:h-9" />
                     <div className="min-w-0">
-                        <span className="text-[11px] sm:text-[12px] font-medium text-gray-400 truncate block">
-                            {domain}
-                        </span>
-                        <span className="text-[10px] sm:text-[11px] text-gray-600 tabular-nums">
-                            {time}
-                        </span>
+                        <span className="text-[11px] sm:text-[12px] font-medium text-gray-400 truncate block">{domain}</span>
+                        <span className="text-[10px] sm:text-[11px] text-gray-600 tabular-nums">{time}</span>
                     </div>
                 </div>
-
                 <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
-                    {link.pinned && <StarBadge />}
-
-                    <div
-                        className={`flex-shrink-0 transition-all duration-150
-                            ${isSelectMode || isSelected
-                                ? 'w-4 opacity-100'
-                                : 'w-0 overflow-hidden opacity-0 sm:w-4 sm:group-hover:opacity-50'
-                            }`}
-                    >
+                    {link.starred && <StarBadge />}
+                    {link.pinned && <PinBadge />}
+                    <div className={`flex-shrink-0 transition-all duration-150
+                        ${isSelectMode || isSelected
+                            ? 'w-4 opacity-100'
+                            : 'w-0 overflow-hidden opacity-0 sm:w-4 sm:group-hover:opacity-50'}`}>
                         <Checkbox checked={isSelected} onClick={handleCheckbox} />
                     </div>
-
                     <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <LinkActions
-                            link={link}
-                            onPin={onPin}
-                            onArchive={onArchive}
-                            onDelete={onDelete}
-                        />
+                        <LinkActions link={link} onPin={onPin} onStar={onStar} onArchive={onArchive} onDelete={onDelete} />
                     </div>
                 </div>
             </div>
 
             {/* Title */}
             <div className="px-3 sm:px-4 mt-0.5 sm:mt-1">
-                <h3 className="text-[13px] sm:text-[14px] font-medium text-gray-100 leading-snug 
+                <h3 className="text-[13px] sm:text-[14px] font-medium text-gray-100 leading-snug
                               line-clamp-2 group-hover:text-white transition-colors">
                     {link.title || 'Untitled'}
                 </h3>
@@ -343,62 +238,36 @@ const LinkCard = memo(forwardRef(function LinkCard({
 
             {/* URL */}
             <div className="px-3 sm:px-4 mt-1">
-                <p className="text-[10px] sm:text-[11px] text-gray-600 truncate font-mono">
-                    {displayUrl}
-                </p>
+                <p className="text-[10px] sm:text-[11px] text-gray-600 truncate font-mono">{displayUrl}</p>
             </div>
 
-            {/* Notes preview */}
             {link.notes_preview && (
                 <div className="px-3 sm:px-4 mt-1.5 sm:mt-2">
-                    <p className="text-[11px] sm:text-[12px] text-gray-500 line-clamp-2 leading-relaxed">
-                        {link.notes_preview}
-                    </p>
+                    <p className="text-[11px] sm:text-[12px] text-gray-500 line-clamp-2 leading-relaxed">{link.notes_preview}</p>
                 </div>
             )}
 
             {/* Footer */}
-            <div className="px-3 sm:px-4 pt-2.5 pb-3 sm:pt-3 sm:pb-3.5 mt-2.5 sm:mt-3 
-                           border-t border-white/[0.04]">
+            <div className="px-3 sm:px-4 pt-2.5 pb-3 sm:pt-3 sm:pb-3.5 mt-2.5 sm:mt-3 border-t border-white/[0.04]">
                 <div className="flex items-center justify-between gap-2">
-                    {/* Tags */}
                     <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-1 overflow-hidden">
                         {link.tags?.length > 0 ? (
                             <>
                                 {link.tags.slice(0, 2).map((t) => <Tag key={t}>{t}</Tag>)}
-                                {link.tags.length > 2 && (
-                                    <span className="text-[9px] sm:text-[10px] text-gray-600 flex-shrink-0">
-                                        +{link.tags.length - 2}
-                                    </span>
-                                )}
+                                {link.tags.length > 2 && <span className="text-[9px] sm:text-[10px] text-gray-600 flex-shrink-0">+{link.tags.length - 2}</span>}
                             </>
                         ) : (
-                            <span className="text-[9px] sm:text-[10px] text-gray-700 italic">
-                                No tags
-                            </span>
+                            <span className="text-[9px] sm:text-[10px] text-gray-700 italic">No tags</span>
                         )}
                     </div>
-
-                    {/* Meta badges */}
                     <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
                         {link.click_count > 0 && (
                             <span className="text-[10px] sm:text-[11px] text-gray-500 tabular-nums">
-                                {link.click_count.toLocaleString()}
-                                <span className="hidden sm:inline"> clicks</span>
+                                {link.click_count.toLocaleString()}<span className="hidden sm:inline"> clicks</span>
                             </span>
                         )}
                         {link.link_type === 'shortened' && (
-                            <span className="text-[8px] sm:text-[9px] font-semibold text-primary/70 
-                                            bg-primary/[0.08] px-1 sm:px-1.5 py-0.5 rounded">
-                                SHORT
-                            </span>
-                        )}
-                        {link.is_public && (
-                            <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600"
-                                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round"
-                                    d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3" />
-                            </svg>
+                            <span className="text-[8px] sm:text-[9px] font-semibold text-primary/70 bg-primary/[0.08] px-1 sm:px-1.5 py-0.5 rounded">SHORT</span>
                         )}
                     </div>
                 </div>
@@ -409,19 +278,16 @@ const LinkCard = memo(forwardRef(function LinkCard({
 
 export default LinkCard;
 
-// ── Shared sub-components ───────────────────────────────
+// ── Sub-components ──────────────────────────────────────
 
 function Checkbox({ checked, onClick }) {
     return (
-        <div
-            onClick={onClick}
+        <div onClick={onClick}
             className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0
                 cursor-pointer transition-all touch-manipulation
-                ${checked ? 'bg-primary border-primary' : 'border-gray-700 hover:border-gray-500'}`}
-        >
+                ${checked ? 'bg-primary border-primary' : 'border-gray-700 hover:border-gray-500'}`}>
             {checked && (
-                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" strokeWidth={3}>
+                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
             )}
@@ -438,12 +304,24 @@ function StarBadge() {
     );
 }
 
+function PinBadge() {
+    return (
+        <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary/70 flex-shrink-0"
+            viewBox="0 0 16 16" fill="currentColor">
+            <path d="M4.146.146A.5.5 0 014.5 0h7a.5.5 0 01.5.5c0
+                     .68-.342 1.174-.646 1.479-.126.125-.25.224-.354.298v4.431l.078.048c.203.127.476.314.751.555C12.36
+                     7.775 13 8.527 13 9.5a.5.5 0 01-.5.5h-4v4.5a.5.5 0
+                     01-1 0V10h-4A.5.5 0 013 9.5c0-.973.64-1.725
+                     1.17-2.189A5.92 5.92 0 015 6.708V2.277a2.77 2.77 0
+                     01-.354-.298C4.342 1.674 4 1.179 4 .5a.5.5 0 01.146-.354z" />
+        </svg>
+    );
+}
+
 function Tag({ children }) {
     return (
-        <span className="text-[9px] sm:text-[10px] text-gray-400 bg-white/[0.04] 
-                         border border-white/[0.06] px-1 sm:px-1.5 py-0.5 
-                         rounded-md truncate max-w-[60px] sm:max-w-[72px]">
-            {children}
-        </span>
+        <span className="text-[9px] sm:text-[10px] text-gray-400 bg-white/[0.04]
+                         border border-white/[0.06] px-1 sm:px-1.5 py-0.5
+                         rounded-md truncate max-w-[60px] sm:max-w-[72px]">{children}</span>
     );
 }
