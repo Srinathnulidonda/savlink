@@ -1,214 +1,139 @@
 // src/dashboard/components/links/LinkActions.jsx
-
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-export default function LinkActions({ 
-    link, 
-    onPin, 
-    onArchive, 
-    onDelete, 
-    onEdit, 
-    compact = false 
+export default function LinkActions({
+    link,
+    onPin,
+    onArchive,
+    onDelete,
+    align = 'right',
+    className = '',
 }) {
-    const [showMenu, setShowMenu] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
 
-    const handleCopyUrl = async () => {
+    useEffect(() => {
+        if (!open) return;
+        const onClickOutside = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+        };
+        const onEsc = (e) => { if (e.key === 'Escape') setOpen(false); };
+        document.addEventListener('mousedown', onClickOutside);
+        document.addEventListener('keydown', onEsc);
+        return () => {
+            document.removeEventListener('mousedown', onClickOutside);
+            document.removeEventListener('keydown', onEsc);
+        };
+    }, [open]);
+
+    const handleCopy = async (e) => {
+        e.stopPropagation();
         try {
-            await navigator.clipboard.writeText(link.original_url);
-            toast.success('URL copied to clipboard');
-        } catch (error) {
-            toast.error('Failed to copy URL');
+            await navigator.clipboard.writeText(link.short_url || link.original_url);
+            toast.success('Copied');
+        } catch {
+            toast.error('Copy failed');
         }
+        setOpen(false);
     };
 
-    const handleCopyShortUrl = async () => {
-        if (!link.short_url) return;
-        
-        try {
-            await navigator.clipboard.writeText(link.short_url);
-            toast.success('Short URL copied');
-        } catch (error) {
-            toast.error('Failed to copy short URL');
-        }
+    const act = (fn) => (e) => {
+        e.stopPropagation();
+        fn?.();
+        setOpen(false);
     };
-
-    const handleOpenLink = () => {
-        window.open(link.original_url, '_blank', 'noopener,noreferrer');
-    };
-
-    const handleAction = async (action) => {
-        setLoading(true);
-        try {
-            await action();
-        } catch (error) {
-            console.error('Action failed:', error);
-        } finally {
-            setLoading(false);
-            setShowMenu(false);
-        }
-    };
-
-    const actions = [
-        {
-            label: 'Open Link',
-            icon: (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-            ),
-            action: handleOpenLink,
-            shortcut: 'Enter'
-        },
-        {
-            label: 'Copy URL',
-            icon: (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-            ),
-            action: handleCopyUrl,
-            shortcut: '⌘C'
-        },
-        ...(link.short_url ? [{
-            label: 'Copy Short URL',
-            icon: (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-                </svg>
-            ),
-            action: handleCopyShortUrl,
-            shortcut: '⌘⇧C'
-        }] : []),
-        {
-            label: link.pinned ? 'Unpin' : 'Pin',
-            icon: (
-                <svg className="h-4 w-4" fill={link.pinned ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
-            ),
-            action: onPin,
-            shortcut: 'P',
-            color: link.pinned ? 'text-yellow-500' : 'text-gray-400'
-        },
-        {
-            label: 'Edit',
-            icon: (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-            ),
-            action: onEdit,
-            shortcut: 'E'
-        },
-        {
-            label: link.archived ? 'Restore' : 'Archive',
-            icon: (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    {link.archived ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                    )}
-                </svg>
-            ),
-            action: onArchive,
-            shortcut: 'A'
-        },
-        {
-            label: 'Delete',
-            icon: (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-            ),
-            action: onDelete,
-            shortcut: '⌫',
-            color: 'text-red-400',
-            divider: true
-        }
-    ];
-
-    if (compact) {
-        return (
-            <div className="flex items-center gap-1">
-                <button
-                    onClick={handleOpenLink}
-                    className="p-1 text-gray-400 hover:text-white transition-colors rounded"
-                    title="Open link"
-                >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                </button>
-                
-                <button
-                    onClick={() => handleAction(onPin)}
-                    className={`p-1 transition-colors rounded ${link.pinned ? 'text-yellow-500' : 'text-gray-400 hover:text-white'}`}
-                    title={link.pinned ? 'Unpin' : 'Pin'}
-                >
-                    <svg className="h-3.5 w-3.5" fill={link.pinned ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                    </svg>
-                </button>
-            </div>
-        );
-    }
 
     return (
-        <div className="relative">
+        <div ref={ref} className={`relative ${className}`}>
             <button
-                onClick={() => setShowMenu(!showMenu)}
-                className="p-1.5 text-gray-400 hover:text-white transition-colors rounded hover:bg-gray-800"
-                title="More actions"
+                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+                className={`p-1.5 rounded-md transition-colors
+                    ${open
+                        ? 'bg-white/[0.06] text-gray-300'
+                        : 'text-gray-600 hover:text-gray-400 hover:bg-white/[0.04]'
+                    }`}
+                aria-label="More actions"
+                aria-expanded={open}
             >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
                 </svg>
             </button>
 
             <AnimatePresence>
-                {showMenu && (
+                {open && (
                     <>
-                        {/* Backdrop */}
                         <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => setShowMenu(false)}
+                            className="fixed inset-0 z-30"
+                            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
                         />
-
-                        {/* Menu */}
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                            initial={{ opacity: 0, scale: 0.95, y: -4 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: -5 }}
-                            className="absolute right-0 top-full mt-1 z-20 w-48 rounded-lg border border-gray-800 bg-gray-950 shadow-xl"
+                            exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                            transition={{ duration: 0.1 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`absolute top-full mt-1 w-52 rounded-lg border border-gray-800/60
+                                bg-[#111] shadow-2xl shadow-black/60 z-40 overflow-hidden py-1
+                                ${align === 'right' ? 'right-0' : 'left-0'}`}
                         >
-                            <div className="p-1">
-                                {actions.map((action, index) => (
-                                    <div key={action.label}>
-                                        {action.divider && <div className="my-1 border-t border-gray-800" />}
-                                        <button
-                                            onClick={() => handleAction(action.action)}
-                                            disabled={loading}
-                                            className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm rounded-md transition-all hover:bg-gray-900 disabled:opacity-50 ${action.color || 'text-gray-400 hover:text-white'}`}
-                                        >
-                                            <span className="flex items-center gap-3">
-                                                {action.icon}
-                                                {action.label}
-                                            </span>
-                                            <kbd className="text-[10px] text-gray-600 font-mono">
-                                                {action.shortcut}
-                                            </kbd>
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
+                            <ActionItem
+                                onClick={(e) => { e.stopPropagation(); window.open(link.original_url, '_blank', 'noopener,noreferrer'); setOpen(false); }}
+                                shortcut="↵"
+                            >
+                                Open in new tab
+                            </ActionItem>
+                            <ActionItem onClick={handleCopy} shortcut="⌘C">
+                                Copy link
+                            </ActionItem>
+
+                            <div className="my-1 mx-2.5 border-t border-gray-800/40" />
+
+                            <ActionItem
+                                onClick={act(onPin)}
+                                shortcut="S"
+                                active={link.pinned}
+                            >
+                                {link.pinned ? 'Remove star' : 'Add to starred'}
+                            </ActionItem>
+                            <ActionItem onClick={act(onArchive)} shortcut="E">
+                                {link.archived ? 'Restore' : 'Archive'}
+                            </ActionItem>
+
+                            <div className="my-1 mx-2.5 border-t border-gray-800/40" />
+
+                            <ActionItem onClick={act(onDelete)} shortcut="⌫" danger>
+                                Delete
+                            </ActionItem>
                         </motion.div>
                     </>
                 )}
             </AnimatePresence>
         </div>
+    );
+}
+
+function ActionItem({ onClick, shortcut, danger = false, active = false, children }) {
+    return (
+        <button
+            onClick={onClick}
+            className={`w-full flex items-center justify-between px-3 py-[7px] text-[13px]
+                transition-colors
+                ${danger
+                    ? 'text-red-400 hover:bg-red-500/[0.08]'
+                    : active
+                        ? 'text-amber-400 hover:bg-white/[0.04]'
+                        : 'text-gray-300 hover:text-white hover:bg-white/[0.04]'
+                }`}
+        >
+            <span className="truncate">{children}</span>
+            {shortcut && (
+                <kbd className="text-[10px] font-mono text-gray-600 ml-3 flex-shrink-0">
+                    {shortcut}
+                </kbd>
+            )}
+        </button>
     );
 }

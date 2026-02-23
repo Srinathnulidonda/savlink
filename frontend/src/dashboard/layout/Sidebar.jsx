@@ -1,55 +1,50 @@
 // src/dashboard/layout/Sidebar.jsx
 
-import UserProfile from '../components/sidebar/UserProfile';
-import QuickActions from '../components/sidebar/QuickActions';
+import { useState } from 'react';
+import SidebarBranding from '../components/sidebar/SidebarBranding';
+import SidebarSearch from '../components/sidebar/SidebarSearch';
 import Navigation from '../components/sidebar/Navigation';
 import Collections from '../components/sidebar/Collections';
 import SidebarFooter from '../components/sidebar/SidebarFooter';
 
 export default function Sidebar({
-    user,
     stats,
     activeView,
-    onViewChange, // ✅ Add this prop
+    onViewChange,
     collections,
     activeCollection,
     onCollectionChange,
     onOpenCommandPalette,
-    onAddLink
+    onAddLink,
+    onCreateCollection,
 }) {
-    const handleCreateCollection = async (collectionData) => {
-        console.log('Creating collection:', collectionData);
-    };
-
     return (
-        <div className="w-56 lg:w-64 flex-shrink-0 border-r border-gray-900 bg-gray-950/50 flex flex-col">
-            {/* User Profile Section */}
-            <UserProfile user={user} stats={stats} />
+        <div className="w-[240px] lg:w-[260px] flex-shrink-0 border-r border-gray-800/60 
+                         bg-[#0a0a0a] flex flex-col select-none">
+            
+            {/* Branding */}
+            <SidebarBranding />
 
-            {/* Quick Actions Section */}
-            <QuickActions
-                onOpenCommandPalette={onOpenCommandPalette}
-                onAddLink={onAddLink}
-                onAddCollection={() => {}} // Add collection handler if needed
-            />
+            {/* Search Trigger */}
+            <SidebarSearch onOpenCommandPalette={onOpenCommandPalette} />
 
-            {/* ✅ Pass onViewChange to Navigation */}
+            {/* Navigation */}
             <Navigation
                 stats={stats}
                 activeView={activeView}
                 onViewChange={onViewChange}
             />
 
-            {/* Collections Section */}
+            {/* Collections */}
             <Collections
                 collections={collections}
                 activeCollection={activeCollection}
                 onCollectionChange={onCollectionChange}
-                onCreateCollection={handleCreateCollection}
+                onCreateCollection={onCreateCollection}
             />
 
-            {/* Footer Section */}
-            <SidebarFooter />
+            {/* Footer */}
+            <SidebarFooter onAddLink={onAddLink} />
         </div>
     );
 }

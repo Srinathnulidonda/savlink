@@ -1,11 +1,10 @@
-// src/dashboard/layout/DashboardLayout.jsx 
+// src/dashboard/layout/DashboardLayout.jsx
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import MobileShell from './MobileShell';
-import MobileMenu from './MobileMenu';
 import DashboardErrorBoundary from './DashboardErrorBoundary';
 
 export default function DashboardLayout({
@@ -17,10 +16,10 @@ export default function DashboardLayout({
     searchQuery,
     onAddLink,
     onOpenCommandPalette,
-    children
+    viewMode,            // ✅ From parent
+    onViewModeChange,    // ✅ From parent
+    children,
 }) {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [viewMode, setViewMode] = useState('grid');
     const [activeCollection, setActiveCollection] = useState(null);
     const [collections, setCollections] = useState([
         { id: 1, name: 'Engineering', color: 'from-blue-600 to-blue-500', count: 432, emoji: '⚡' },
@@ -30,28 +29,26 @@ export default function DashboardLayout({
         { id: 5, name: 'Research', color: 'from-red-600 to-red-500', count: 67, emoji: '🔬' },
     ]);
 
-    // Detect mobile
     const [isMobile, setIsMobile] = useState(false);
+
     useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
     }, []);
 
-    const handleCreateCollection = async (collectionData) => {
-        console.log('Creating collection:', collectionData);
+    const handleCreateCollection = async (data) => {
         const newCollection = {
             id: Date.now(),
-            name: collectionData.name,
-            emoji: collectionData.emoji,
-            color: collectionData.color || 'from-blue-600 to-blue-500',
-            count: 0
+            name: data.name,
+            emoji: data.emoji,
+            color: data.color || 'from-blue-600 to-blue-500',
+            count: 0,
         };
         setCollections(prev => [...prev, newCollection]);
     };
 
-    // ✅ Pass navigation props correctly
     if (isMobile) {
         return (
             <DashboardErrorBoundary>
@@ -69,54 +66,45 @@ export default function DashboardLayout({
                     onCollectionChange={setActiveCollection}
                     onCreateCollection={handleCreateCollection}
                 >
-                    {React.Children.map(children, child =>
-                        React.cloneElement(child, { viewMode })
-                    )}
+                    {children}
                 </MobileShell>
             </DashboardErrorBoundary>
         );
     }
 
-    // Desktop Layout
     return (
         <DashboardErrorBoundary>
-            <div className="flex h-screen bg-black overflow-hidden relative">
-                {/* Desktop Sidebar */}
+            <div className="flex h-screen bg-black overflow-hidden">
+                {/* Sidebar */}
                 <Sidebar
-                    user={user}
                     stats={stats}
                     activeView={activeView}
-                    onViewChange={onViewChange} // ✅ Pass this prop
+                    onViewChange={onViewChange}
                     collections={collections}
                     activeCollection={activeCollection}
                     onCollectionChange={setActiveCollection}
                     onOpenCommandPalette={onOpenCommandPalette}
+                    onAddLink={onAddLink}
                     onCreateCollection={handleCreateCollection}
                 />
 
-                {/* Main Content */}
+                {/* Main area */}
                 <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Header */}
                     <Header
+                        user={user}
                         activeView={activeView}
                         stats={stats}
                         searchQuery={searchQuery}
                         onSearch={onSearch}
                         viewMode={viewMode}
-                        onViewModeChange={setViewMode}
+                        onViewModeChange={onViewModeChange}
                         onAddLink={onAddLink}
-                        onMenuClick={() => setIsMobileMenuOpen(true)}
                         onOpenCommandPalette={onOpenCommandPalette}
-                        isMobile={false}
                     />
 
-                    {/* Content Area */}
                     <div className="flex-1 overflow-y-auto bg-black">
-                        {React.Children.map(children, child =>
-                            React.cloneElement(child, { viewMode })
-                        )}
+                        {children}
                     </div>
-
                 </div>
             </div>
         </DashboardErrorBoundary>

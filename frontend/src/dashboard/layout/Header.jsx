@@ -1,10 +1,11 @@
 // src/dashboard/layout/Header.jsx
 
 import { useState, useEffect } from 'react';
-import HeaderMobile from '../components/header/HeaderMobile';
 import HeaderDesktop from '../components/header/HeaderDesktop';
+import HeaderMobile from '../components/header/HeaderMobile';
 
 export default function Header({
+    user,
     activeView,
     stats,
     searchQuery,
@@ -12,35 +13,29 @@ export default function Header({
     viewMode,
     onViewModeChange,
     onAddLink,
-    onMenuClick,
     onOpenCommandPalette,
-    isMobile
 }) {
-    // Mobile detection with state to prevent hydration mismatch
-    const [isMobileView, setIsMobileView] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
-        const checkMobile = () => {
-            setIsMobileView(window.innerWidth < 768);
-        };
-
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
     }, []);
 
     return (
-        <div className="border-b border-gray-900 bg-gray-950/50 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-            {isMobileView ? (
+        <header className="flex-shrink-0 relative z-[60] border-b border-gray-800/40 bg-[#0a0a0a]">
+            {isMobile ? (
                 <HeaderMobile
+                    user={user}
                     activeView={activeView}
                     stats={stats}
-                    onMenuClick={onMenuClick}
                     onOpenCommandPalette={onOpenCommandPalette}
-                // Note: onAddLink is handled by the floating button on mobile
                 />
             ) : (
                 <HeaderDesktop
+                    user={user}
                     activeView={activeView}
                     stats={stats}
                     searchQuery={searchQuery}
@@ -48,8 +43,9 @@ export default function Header({
                     viewMode={viewMode}
                     onViewModeChange={onViewModeChange}
                     onAddLink={onAddLink}
+                    onOpenCommandPalette={onOpenCommandPalette}
                 />
             )}
-        </div>
+        </header>
     );
 }

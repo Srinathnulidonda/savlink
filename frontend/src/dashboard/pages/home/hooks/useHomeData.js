@@ -1,24 +1,26 @@
 // src/dashboard/pages/home/hooks/useHomeData.js
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import DashboardService from '../../../../services/dashboard.service';
 
 export function useHomeData() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const mountedRef = useRef(true);
     const fetchedRef = useRef(false);
 
-    const fetchData = async () => {
-        // Prevent duplicate fetches
-        if (fetchedRef.current) return;
+    const fetchData = useCallback(async (isRefetch = false) => {
+        if (fetchedRef.current && !isRefetch) return;
         fetchedRef.current = true;
 
         try {
-            setLoading(true);
+            if (!isRefetch) setLoading(true);
             setError(null);
 
             const result = await DashboardService.getHomeData();
+
+            if (!mountedRef.current) return;
 
             if (result.success) {
                 setData(result.data);
@@ -26,31 +28,30 @@ export function useHomeData() {
                 setError(result.error || 'Failed to load data');
             }
         } catch (err) {
-            console.error('useHomeData error:', err);
-            setError(err.message || 'An unexpected error occurred');
+            if (mountedRef.current) {
+                setError(err.message || 'An unexpected error occurred');
+            }
         } finally {
-            setLoading(false);
+            if (mountedRef.current) {
+                setLoading(false);
+            }
         }
-    };
-
-    useEffect(() => {
-        fetchData();
-
-        // Reset on unmount so it fetches again next time
-        return () => {
-            fetchedRef.current = false;
-        };
     }, []);
 
-    const refetch = () => {
-        fetchedRef.current = false;
+    useEffect(() => {
+        mountedRef.current = true;
         fetchData();
-    };
 
-    return {
-        data,
-        loading,
-        error,
-        refetch
-    };
+        return () => {
+            mountedRef.current = false;
+            fetchedRef.current = false;
+        };
+    }, [fetchData]);
+
+    const refetch = useCallback(() => {
+        fetchedRef.current = false;
+        fetchData(true);
+    }, [fetchData]);
+
+    return { data, loading, error, refetch };
 }

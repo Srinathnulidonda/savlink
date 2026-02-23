@@ -1,6 +1,6 @@
 // src/dashboard/DashboardApp.jsx
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import DashboardLayout from './layout/DashboardLayout';
@@ -14,8 +14,18 @@ import LinksService from '../services/links.service';
 import { useAuth } from '../auth/context/AuthContext';
 import toast from 'react-hot-toast';
 
-// Wrapper component to extract view from URL params
-function LinksPageWrapper({ links, searchQuery, onUpdateLink, onDeleteLink, onPinLink, onArchiveLink, onRefresh, loading }) {
+// ── LinksPageWrapper ────────────────────────────────────────
+function LinksPageWrapper({
+    links,
+    searchQuery,
+    viewMode,
+    onUpdateLink,
+    onDeleteLink,
+    onPinLink,
+    onArchiveLink,
+    onRefresh,
+    loading,
+}) {
     const { filterView } = useParams();
     const view = filterView || 'all';
 
@@ -24,7 +34,7 @@ function LinksPageWrapper({ links, searchQuery, onUpdateLink, onDeleteLink, onPi
             links={links}
             view={view}
             searchQuery={searchQuery}
-            viewMode={window.innerWidth >= 768 ? 'grid' : 'list'}
+            viewMode={viewMode}
             onUpdateLink={onUpdateLink}
             onDeleteLink={onDeleteLink}
             onPinLink={onPinLink}
@@ -35,22 +45,36 @@ function LinksPageWrapper({ links, searchQuery, onUpdateLink, onDeleteLink, onPi
     );
 }
 
+// ── Main Dashboard ──────────────────────────────────────────
 export default function Dashboard() {
     const { user } = useAuth();
     const navigate = useNavigate();
 
     const [links, setLinks] = useState([]);
-    const [stats, setStats] = useState({
-        all: 0,
-        recent: 0,
-        starred: 0,
-        archive: 0,
-    });
+    const [stats, setStats] = useState({ all: 0, recent: 0, starred: 0, archive: 0 });
     const [view, setView] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [dataLoading, setDataLoading] = useState(true);
+
+    // ✅ ViewMode — single source of truth, persisted in localStorage
+    const [viewMode, setViewMode] = useState(() => {
+        try {
+            return localStorage.getItem('savlink_view_mode') || 'grid';
+        } catch {
+            return 'grid';
+        }
+    });
+
+    const handleViewModeChange = useCallback((mode) => {
+        setViewMode(mode);
+        try {
+            localStorage.setItem('savlink_view_mode', mode);
+        } catch {
+            // Silently fail if localStorage unavailable
+        }
+    }, []);
 
     const fetchingRef = useRef(false);
     const lastFetchParamsRef = useRef({ view: '', searchQuery: '' });
@@ -63,7 +87,6 @@ export default function Dashboard() {
         ) {
             return;
         }
-
         lastFetchParamsRef.current = { view, searchQuery };
         fetchDashboardData();
     }, [view, searchQuery]);
@@ -77,7 +100,7 @@ export default function Dashboard() {
 
             const [linksResult, statsResult] = await Promise.allSettled([
                 DashboardService.getLinks({ view, search: searchQuery }),
-                DashboardService.getStats()
+                DashboardService.getStats(),
             ]);
 
             if (linksResult.status === 'fulfilled' && linksResult.value?.success) {
@@ -87,30 +110,27 @@ export default function Dashboard() {
             }
 
             if (statsResult.status === 'fulfilled' && statsResult.value?.success) {
-                const statsData = statsResult.value.data?.stats;
-                if (statsData) {
+                const s = statsResult.value.data?.stats;
+                if (s) {
                     setStats({
-                        all: statsData.all || 0,
-                        recent: statsData.recent || 0,
-                        starred: statsData.starred || 0,
-                        archive: statsData.archive || 0,
+                        all: s.all || 0,
+                        recent: s.recent || 0,
+                        starred: s.starred || 0,
+                        archive: s.archive || 0,
                     });
                 }
             }
         } catch (error) {
-            console.error('Dashboard data fetch error:', error);
+            console.error('Dashboard fetch error:', error);
         } finally {
             setDataLoading(false);
             fetchingRef.current = false;
         }
     };
 
-    // Handle view change from navigation
-    const handleViewChange = (newView) => {
-        setView(newView);
-    };
+    const handleViewChange = (newView) => setView(newView);
 
-    // Keyboard shortcuts
+    // ── Keyboard shortcuts ──────────────────────────────
     useEffect(() => {
         const handleKeyDown = (e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -126,30 +146,27 @@ export default function Dashboard() {
                 setIsAddLinkOpen(false);
             }
         };
-
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    const handleAddLink = async (linkData) => {
-        try {
-            const result = await LinksService.createLink(linkData);
-            if (result?.success && result?.data) {
-                setLinks([result.data, ...links]);
-                setIsAddLinkOpen(false);
-                toast.success('Link saved successfully');
-                fetchDashboardData();
-            }
-        } catch (error) {
-            toast.error(error.message || 'Failed to save link');
-        }
-    };
+    // ── Link Added Handler ──────────────────────────────
+    // AddLinkModal already calls the API, so we just need to:
+    // 1. Close the modal
+    // 2. Refresh the data
+    const handleLinkAdded = useCallback((linkData) => {
+        setIsAddLinkOpen(false);
+        // Reset fetch params to force refresh
+        lastFetchParamsRef.current = { view: '', searchQuery: '' };
+        fetchDashboardData();
+    }, []);
 
+    // ── Link CRUD ───────────────────────────────────────
     const handleUpdateLink = async (linkId, updates) => {
         try {
             const result = await LinksService.updateLink(linkId, updates);
             if (result?.success && result?.data) {
-                setLinks(links.map(link => link.id === linkId ? result.data : link));
+                setLinks(links.map(l => (l.id === linkId ? result.data : l)));
                 toast.success('Link updated');
             }
         } catch (error) {
@@ -159,7 +176,7 @@ export default function Dashboard() {
 
     const handleDeleteLink = async (linkId) => {
         try {
-            setLinks(links.filter(link => link.id !== linkId));
+            setLinks(links.filter(l => l.id !== linkId));
             await LinksService.deleteLink(linkId);
             toast.success('Link deleted');
             fetchDashboardData();
@@ -204,6 +221,19 @@ export default function Dashboard() {
         }
     };
 
+    // ── Shared link view props ──────────────────────────
+    const linkViewProps = {
+        links,
+        searchQuery,
+        viewMode,
+        onUpdateLink: handleUpdateLink,
+        onDeleteLink: handleDeleteLink,
+        onPinLink: handlePinLink,
+        onArchiveLink: handleArchiveLink,
+        onRefresh: () => setIsAddLinkOpen(true),
+        loading: dataLoading,
+    };
+
     return (
         <DashboardLayout
             user={user}
@@ -214,49 +244,43 @@ export default function Dashboard() {
             searchQuery={searchQuery}
             onAddLink={() => setIsAddLinkOpen(true)}
             onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
         >
             <Routes>
-                {/* Home Page */}
+                {/* Home */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/home" element={<HomePage />} />
 
-                {/* My Files Page */}
-                <Route path="/my-files" element={<MyFiles />} />
+                {/* My Files — receives viewMode */}
+                <Route path="/my-files" element={<MyFiles viewMode={viewMode} />} />
 
-                {/* Link Views - All, Starred, Recent, Archive */}
+                {/* Link Views */}
                 <Route
                     path="/links/:filterView"
-                    element={
-                        <LinksPageWrapper
-                            links={links}
-                            searchQuery={searchQuery}
-                            onUpdateLink={handleUpdateLink}
-                            onDeleteLink={handleDeleteLink}
-                            onPinLink={handlePinLink}
-                            onArchiveLink={handleArchiveLink}
-                            onRefresh={() => setIsAddLinkOpen(true)}
-                            loading={dataLoading}
-                        />
-                    }
+                    element={<LinksPageWrapper {...linkViewProps} />}
                 />
 
                 {/* Collections */}
-                <Route path="/collections/:id" element={<div>Collection View</div>} />
+                <Route
+                    path="/collections/:id"
+                    element={<div>Collection View</div>}
+                />
 
                 {/* Settings */}
                 <Route path="/settings" element={<div>Settings</div>} />
 
-                {/* Default - redirect to home */}
+                {/* Fallback */}
                 <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
             </Routes>
 
-            {/* Global Modals */}
+            {/* ── Global Modals ──────────────────────────── */}
             <AnimatePresence>
                 {isAddLinkOpen && (
                     <AddLinkModal
                         isOpen={isAddLinkOpen}
                         onClose={() => setIsAddLinkOpen(false)}
-                        onSubmit={handleAddLink}
+                        onSubmit={handleLinkAdded}
                     />
                 )}
             </AnimatePresence>

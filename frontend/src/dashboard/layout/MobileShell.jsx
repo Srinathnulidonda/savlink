@@ -1,7 +1,7 @@
 // src/dashboard/layout/MobileShell.jsx
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import HeaderMobile from '../components/header/HeaderMobile';
 import MobileMenu from './MobileMenu';
 import MobileAddButton from '../components/common/MobileAddButton';
@@ -15,60 +15,42 @@ export default function MobileShell({
     searchQuery,
     onAddLink,
     onOpenCommandPalette,
-    children
+    collections,
+    activeCollection,
+    onCollectionChange,
+    onCreateCollection,
+    children,
 }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [collections] = useState([
-        { id: 1, name: 'Engineering', color: 'from-blue-600 to-blue-500', count: 432, emoji: '⚡' },
-        { id: 2, name: 'Design', color: 'from-purple-600 to-purple-500', count: 234, emoji: '🎨' },
-        { id: 3, name: 'Marketing', color: 'from-green-600 to-green-500', count: 156, emoji: '📈' },
-    ]);
 
-    // Prevent body scroll when menu is open
     useEffect(() => {
-        if (isMobileMenuOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
+        document.body.style.overflow = isMobileMenuOpen ? 'hidden' : 'unset';
+        return () => { document.body.style.overflow = 'unset'; };
     }, [isMobileMenuOpen]);
-
-    const handleCreateCollection = async (collectionData) => {
-        console.log('Creating collection:', collectionData);
-        // Add collection creation logic here
-    };
 
     return (
         <div className="flex h-screen bg-black overflow-hidden relative">
-            {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Mobile Header */}
-                <div className="border-b border-gray-900 bg-gray-950/50 px-3 py-3 safe-area-top">
+                {/* Header */}
+                <header className="flex-shrink-0 border-b border-gray-800/40 bg-[#0a0a0a]/80 
+                                   backdrop-blur-sm safe-area-top">
                     <HeaderMobile
+                        user={user}
                         activeView={activeView}
                         stats={stats}
                         onMenuClick={() => setIsMobileMenuOpen(true)}
                         onOpenCommandPalette={onOpenCommandPalette}
                     />
-                </div>
+                </header>
 
-                {/* Content Area */}
+                {/* Content */}
                 <div className="flex-1 overflow-y-auto bg-black safe-area-bottom">
                     {children}
                 </div>
-
-                {/* ✅ ActivityBar removed */}
             </div>
 
-            {/* Floating Add Button */}
-            <MobileAddButton
-                onAddLink={onAddLink}
-                useSafeArea={true}
-            />
+            {/* FAB */}
+            <MobileAddButton onAddLink={onAddLink} useSafeArea />
 
             {/* Mobile Menu */}
             <AnimatePresence>
@@ -83,8 +65,13 @@ export default function MobileShell({
                             onViewChange(view);
                             setIsMobileMenuOpen(false);
                         }}
-                        collections={collections}
-                        onCreateCollection={handleCreateCollection}
+                        collections={collections || []}
+                        activeCollection={activeCollection}
+                        onCollectionChange={(id) => {
+                            onCollectionChange?.(id);
+                            setIsMobileMenuOpen(false);
+                        }}
+                        onCreateCollection={onCreateCollection}
                     />
                 )}
             </AnimatePresence>

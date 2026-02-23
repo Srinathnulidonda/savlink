@@ -1,27 +1,37 @@
 // src/dashboard/components/sidebar/Collections.jsx
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+const EMOJI_OPTIONS = ['📁', '⚡', '🎨', '📈', '📚', '🔬', '💡', '🎯', '🚀', '🔧', '💻', '📱'];
 
 export default function Collections({ collections, onCreateCollection, activeCollection, onCollectionChange }) {
     const [isCreating, setIsCreating] = useState(false);
-    const [newCollectionName, setNewCollectionName] = useState('');
+    const [newName, setNewName] = useState('');
     const [selectedEmoji, setSelectedEmoji] = useState('📁');
+    const inputRef = useRef(null);
+    const navigate = useNavigate();
+    const location = useLocation();
 
-    const emojiOptions = ['📁', '⚡', '🎨', '📈', '📚', '🔬', '💡', '🎯', '🚀', '🔧', '💻', '📱', '🌟', '🎵', '🎬', '📰'];
+    // Auto-focus input
+    useEffect(() => {
+        if (isCreating && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [isCreating]);
 
-    const handleCreateCollection = async (e) => {
+    const handleCreate = async (e) => {
         e.preventDefault();
-        if (!newCollectionName.trim()) return;
+        if (!newName.trim()) return;
 
         try {
             await onCreateCollection({
-                name: newCollectionName.trim(),
+                name: newName.trim(),
                 emoji: selectedEmoji,
-                color: 'from-blue-600 to-blue-500' // Default color
+                color: 'from-blue-600 to-blue-500',
             });
-
-            setNewCollectionName('');
+            setNewName('');
             setSelectedEmoji('📁');
             setIsCreating(false);
         } catch (error) {
@@ -29,87 +39,109 @@ export default function Collections({ collections, onCreateCollection, activeCol
         }
     };
 
-    const getCountDisplay = (count) => {
-        if (count > 9999) return '9999+';
-        if (count > 999) return '999+';
+    const handleCollectionClick = (collection) => {
+        onCollectionChange?.(collection.id);
+        navigate(`/dashboard/collections/${collection.id}`);
+    };
+
+    const formatCount = (count) => {
+        if (count > 999) return `${(count / 1000).toFixed(1)}k`;
         return count.toString();
     };
 
+    const isCollectionActive = (id) => {
+        return activeCollection === id || location.pathname.includes(`/collections/${id}`);
+    };
+
     return (
-        <div className="flex-1 border-t border-gray-900 p-2.5 lg:p-3 overflow-y-auto min-h-0">
+        <div className="flex-1 flex flex-col min-h-0 border-t border-gray-800/40">
             {/* Header */}
-            <div className="flex items-center justify-between mb-2">
-                <h3 className="text-[10px] lg:text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Collections ({collections.length})
-                </h3>
+            <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
+                <span className="text-[11px] font-medium text-gray-600 uppercase tracking-wider">
+                    Collections
+                </span>
                 <button
                     onClick={() => setIsCreating(!isCreating)}
-                    className="text-gray-500 hover:text-gray-400 transition-colors p-0.5 rounded hover:bg-gray-900"
-                    title="Create new collection"
+                    className="p-1 rounded-md text-gray-600 hover:text-gray-400 
+                               hover:bg-gray-800/50 transition-colors"
+                    title={isCreating ? 'Cancel' : 'New collection'}
                 >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        {isCreating ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        ) : (
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                        )}
-                    </svg>
+                    <motion.svg
+                        className="h-3.5 w-3.5"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                        animate={{ rotate: isCreating ? 45 : 0 }}
+                        transition={{ duration: 0.15 }}
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </motion.svg>
                 </button>
             </div>
 
-            {/* Create Collection Form */}
+            {/* Create Form */}
             <AnimatePresence>
                 {isCreating && (
                     <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="mb-2 overflow-hidden"
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden px-3"
                     >
-                        <form onSubmit={handleCreateCollection} className="p-2 bg-gray-900/50 rounded-md border border-gray-800">
-                            {/* Emoji Selector */}
-                            <div className="mb-1.5">
-                                <label className="text-[10px] text-gray-500 block mb-0.5">Icon</label>
-                                <div className="flex flex-wrap gap-0.5">
-                                    {emojiOptions.slice(0, 8).map((emoji) => (
-                                        <button
-                                            key={emoji}
-                                            type="button"
-                                            onClick={() => setSelectedEmoji(emoji)}
-                                            className={`p-0.5 rounded text-xs hover:bg-gray-800 transition-colors ${selectedEmoji === emoji ? 'bg-gray-800 ring-1 ring-primary/50' : ''
-                                                }`}
-                                        >
-                                            {emoji}
-                                        </button>
-                                    ))}
-                                </div>
+                        <form onSubmit={handleCreate} className="p-3 mb-2 rounded-lg border border-gray-800/50 
+                                                                   bg-gray-900/30 space-y-2.5">
+                            {/* Emoji Row */}
+                            <div className="flex flex-wrap gap-1">
+                                {EMOJI_OPTIONS.slice(0, 8).map((emoji) => (
+                                    <button
+                                        key={emoji}
+                                        type="button"
+                                        onClick={() => setSelectedEmoji(emoji)}
+                                        className={`w-7 h-7 rounded-md text-sm flex items-center justify-center
+                                                   transition-all ${selectedEmoji === emoji
+                                                ? 'bg-primary/10 ring-1 ring-primary/30 scale-110'
+                                                : 'hover:bg-gray-800/50'
+                                            }`}
+                                    >
+                                        {emoji}
+                                    </button>
+                                ))}
                             </div>
 
                             {/* Name Input */}
-                            <div className="mb-2">
-                                <input
-                                    type="text"
-                                    value={newCollectionName}
-                                    onChange={(e) => setNewCollectionName(e.target.value)}
-                                    placeholder="Collection name..."
-                                    className="w-full px-1.5 py-1 text-xs bg-gray-900 border border-gray-700 rounded focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/50 text-white"
-                                    autoFocus
-                                />
-                            </div>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={newName}
+                                onChange={(e) => setNewName(e.target.value)}
+                                placeholder="Collection name…"
+                                className="w-full px-2.5 py-1.5 text-[13px] bg-gray-900/50 
+                                           border border-gray-800/50 rounded-md text-white 
+                                           placeholder-gray-600 focus:border-gray-700/50 
+                                           focus:outline-none focus:ring-1 focus:ring-primary/20
+                                           transition-colors"
+                                onKeyDown={(e) => e.key === 'Escape' && setIsCreating(false)}
+                            />
 
-                            {/* Actions */}
-                            <div className="flex gap-1.5">
+                            {/* Buttons */}
+                            <div className="flex gap-2">
                                 <button
                                     type="submit"
-                                    disabled={!newCollectionName.trim()}
-                                    className="flex-1 px-2 py-1 text-[10px] bg-primary text-white rounded hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                    disabled={!newName.trim()}
+                                    className="flex-1 px-2.5 py-1.5 text-[12px] font-medium 
+                                               bg-primary text-white rounded-md
+                                               hover:bg-primary-light disabled:opacity-40 
+                                               disabled:cursor-not-allowed transition-colors"
                                 >
                                     Create
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setIsCreating(false)}
-                                    className="px-2 py-1 text-[10px] text-gray-400 hover:text-white transition-colors"
+                                    onClick={() => {
+                                        setIsCreating(false);
+                                        setNewName('');
+                                    }}
+                                    className="px-2.5 py-1.5 text-[12px] text-gray-500 
+                                               hover:text-gray-300 transition-colors"
                                 >
                                     Cancel
                                 </button>
@@ -119,75 +151,61 @@ export default function Collections({ collections, onCreateCollection, activeCol
                 )}
             </AnimatePresence>
 
-            {/* Collections List */}
-            <div className="space-y-0.5 pb-2">
-                <AnimatePresence>
-                    {collections.map((collection, index) => {
-                        const isActive = activeCollection === collection.id;
-
-                        return (
-                            <motion.div
-                                key={collection.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                            >
-                                <button
-                                    onClick={() => onCollectionChange(collection.id)}
-                                    className={`w-full flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium transition-all group ${isActive
-                                        ? 'bg-primary/10 text-primary border border-primary/20 shadow-sm'
-                                        : 'text-gray-400 hover:bg-gray-900 hover:text-white'
-                                        }`}
-                                    title={`View ${collection.name} collection`}
-                                >
-                                    <div className="flex items-center gap-1.5">
-                                        <span className={`text-xs transition-transform group-hover:scale-110 ${isActive ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'
-                                            }`}>
-                                            {collection.emoji}
-                                        </span>
-                                        <span className="font-medium truncate">
-                                            {collection.name}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5">
-                                        {/* Count Display */}
-                                        {isActive ? (
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-mono bg-primary/20 text-primary">
-                                                {getCountDisplay(collection.count)}
-                                            </span>
-                                        ) : (
-                                            <span className="text-[10px] font-mono text-gray-600">
-                                                {getCountDisplay(collection.count)}
-                                            </span>
-                                        )}
-                                    </div>
-                                </button>
-                            </motion.div>
-                        );
-                    })}
-                </AnimatePresence>
-
-                {/* Empty State */}
-                {collections.length === 0 && !isCreating && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="text-center py-3"
-                    >
-                        <div className="text-gray-600 mb-1">
-                            <svg className="h-4 w-4 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            {/* List */}
+            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent 
+                            scrollbar-thumb-gray-800 px-3 pb-2 space-y-0.5">
+                {collections.length === 0 && !isCreating ? (
+                    <div className="text-center py-8 px-4">
+                        <div className="w-9 h-9 mx-auto rounded-lg bg-gray-800/30 border border-gray-800/40
+                                        flex items-center justify-center mb-2.5">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" 
+                                 stroke="currentColor" strokeWidth={1.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9m4.06-7.19l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
                             </svg>
-                            <p className="text-[10px] text-gray-500">No collections yet</p>
                         </div>
+                        <p className="text-[11px] text-gray-600 mb-2">No collections yet</p>
                         <button
                             onClick={() => setIsCreating(true)}
-                            className="text-[10px] text-primary hover:text-primary-light transition-colors"
+                            className="text-[11px] text-primary hover:text-primary-light transition-colors"
                         >
-                            Create your first collection
+                            Create your first
                         </button>
-                    </motion.div>
+                    </div>
+                ) : (
+                    collections.map((col) => {
+                        const active = isCollectionActive(col.id);
+
+                        return (
+                            <button
+                                key={col.id}
+                                onClick={() => handleCollectionClick(col)}
+                                className={`w-full flex items-center gap-2.5 px-3 py-[7px] rounded-lg 
+                                           text-[13px] transition-all group
+                                           ${active
+                                        ? 'bg-white/[0.06] text-white'
+                                        : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.03]'
+                                    }`}
+                            >
+                                {/* Emoji */}
+                                <span className={`text-sm flex-shrink-0 transition-transform
+                                                 ${active ? '' : 'opacity-70 group-hover:opacity-100'}
+                                                 group-hover:scale-110`}>
+                                    {col.emoji || '📁'}
+                                </span>
+
+                                {/* Name */}
+                                <span className="flex-1 text-left truncate font-medium">
+                                    {col.name}
+                                </span>
+
+                                {/* Count */}
+                                <span className={`text-[11px] tabular-nums flex-shrink-0
+                                                 ${active ? 'text-gray-400' : 'text-gray-700'}`}>
+                                    {formatCount(col.count)}
+                                </span>
+                            </button>
+                        );
+                    })
                 )}
             </div>
         </div>

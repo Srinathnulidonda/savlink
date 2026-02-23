@@ -1,19 +1,22 @@
 // src/dashboard/modals/AddLink/useAddLink.js
 
-import { useState } from 'react';
-import LinksService from '../../../services/links.service'; // ✅ Changed to default import
+import { useState, useCallback } from 'react';
+import LinksService from '../../../services/links.service';
 import toast from 'react-hot-toast';
 
 export function useAddLink() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const addLink = async (linkData) => {
+    const clearError = useCallback(() => {
+        setError('');
+    }, []);
+
+    const addLink = useCallback(async (linkData) => {
         setLoading(true);
         setError('');
 
         try {
-            // Validate URL
             if (!linkData.original_url) {
                 throw new Error('URL is required');
             }
@@ -42,15 +45,14 @@ export function useAddLink() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const validateUrl = (url) => {
+    const validateUrl = useCallback((url) => {
         if (!url) return { valid: false, error: 'URL is required' };
 
         try {
-            const urlObj = new URL(url);
+            const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
             
-            // Check for valid protocols
             if (!['http:', 'https:'].includes(urlObj.protocol)) {
                 return { valid: false, error: 'URL must start with http:// or https://' };
             }
@@ -59,31 +61,7 @@ export function useAddLink() {
         } catch {
             return { valid: false, error: 'Please enter a valid URL' };
         }
-    };
-
-    const extractMetadata = async (url) => {
-        try {
-            const urlObj = new URL(url);
-            const domain = urlObj.hostname.replace('www.', '');
-            
-            // Basic metadata extraction
-            return {
-                domain,
-                title: domain,
-                description: '',
-                favicon: null
-            };
-        } catch {
-            return {
-                domain: '',
-                title: '',
-                description: '',
-                favicon: null
-            };
-        }
-    };
-
-    const clearError = () => setError('');
+    }, []);
 
     return {
         addLink,
@@ -91,6 +69,5 @@ export function useAddLink() {
         error,
         clearError,
         validateUrl,
-        extractMetadata
     };
 }
