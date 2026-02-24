@@ -2,7 +2,7 @@
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 from flask import current_app
-from app.utils.base_url import get_base_url
+from app.utils import get_base_url
 
 def send_emergency_token_email(email: str, token: str) -> bool:
     config = current_app.config
