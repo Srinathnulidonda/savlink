@@ -6,6 +6,26 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _build_cors():
+    raw = os.environ.get('CORS_ORIGINS', '')
+    base = os.environ.get('BASE_URL')
+    defaults = [
+        'http://localhost:5173', 'http://localhost:3000',
+        'https://savlink.vercel.app', base,
+        'https://accounts.google.com',
+    ]
+    extra = [o.strip() for o in raw.split(',') if o.strip()] if raw else []
+    firebase_json = os.environ.get('FIREBASE_CONFIG_JSON')
+    if firebase_json:
+        try:
+            pid = json.loads(firebase_json).get('project_id')
+            if pid:
+                defaults.append(f'https://{pid}.firebaseapp.com')
+        except Exception:
+            pass
+    return list(dict.fromkeys(defaults + extra))
+
+
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', os.urandom(32).hex())
 
@@ -31,7 +51,7 @@ class Config:
     }
 
     FIREBASE_CONFIG_JSON = os.environ.get('FIREBASE_CONFIG_JSON')
-    BASE_URL = os.environ.get('BASE_URL', 'https://savlink.vercel.app')
+    BASE_URL = os.environ.get('BASE_URL')
     API_URL = os.environ.get('API_URL', '')
     REDIS_URL = os.environ.get('REDIS_URL')
     BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
@@ -43,36 +63,12 @@ class Config:
 
     CORS_ORIGINS = _build_cors()
 
-    @staticmethod
-    def _build_cors():
-        raw = os.environ.get('CORS_ORIGINS', '')
-        base = os.environ.get('BASE_URL', 'https://savlink.vercel.app')
-        defaults = [
-            'http://localhost:5173', 'http://localhost:3000',
-            'https://savlink.vercel.app', base,
-            'https://accounts.google.com',
-        ]
-        extra = [o.strip() for o in raw.split(',') if o.strip()] if raw else []
-        firebase_json = os.environ.get('FIREBASE_CONFIG_JSON')
-        if firebase_json:
-            try:
-                pid = json.loads(firebase_json).get('project_id')
-                if pid:
-                    defaults.append(f'https://{pid}.firebaseapp.com')
-            except Exception:
-                pass
-        return list(dict.fromkeys(defaults + extra))
-
     @classmethod
     def init_app(cls, app):
         app.config['CORS_ORIGINS'] = cls.CORS_ORIGINS
         if cls.FLASK_ENV == 'production':
             if not cls.SQLALCHEMY_DATABASE_URI:
                 raise ValueError('DATABASE_URL must be set in production')
-
-
-# re-evaluate at import time
-Config.CORS_ORIGINS = Config._build_cors()
 
 
 def get_config():
