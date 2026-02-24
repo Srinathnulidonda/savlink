@@ -2,6 +2,7 @@
 import os
 import json
 import logging
+from datetime import timedelta  # ← ADD THIS
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +57,16 @@ class Config:
     BASE_URL = os.environ.get('BASE_URL')
     API_URL = os.environ.get('API_URL', '')
     REDIS_URL = os.environ.get('REDIS_URL')
+    
+    # ─── Email Configuration ─────────────────────────────────────────
     BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
-    EMAIL_FROM_ADDRESS = os.environ.get('EMAIL_FROM_ADDRESS')
+    EMAIL_FROM_ADDRESS = os.environ.get('EMAIL_FROM_ADDRESS', 'noreply@savlink.com')
+    EMAIL_FROM_NAME = os.environ.get('EMAIL_FROM_NAME', 'Savlink')
+    USE_BREVO_API = os.environ.get('USE_BREVO_API', 'true').lower() == 'true'
+    
+    # ─── Emergency Access Configuration ──────────────────────────────
+    EMERGENCY_TOKEN_TTL = timedelta(minutes=15)
+    EMERGENCY_SESSION_TTL = timedelta(hours=1)
 
     FLASK_ENV = os.environ.get('FLASK_ENV', 'production')
     DEBUG = FLASK_ENV == 'development'
