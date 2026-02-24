@@ -36,14 +36,17 @@ def require_auth(f):
         auth_header = request.headers.get('Authorization')
         
         if not auth_header:
+            logger.warning(f"No auth header from {request.remote_addr}")
             return error_response('Authorization header required', 401, 'AUTH_MISSING')
         
         if not auth_header.startswith('Bearer '):
+            logger.warning(f"Invalid auth format from {request.remote_addr}: {auth_header[:20]}")
             return error_response('Invalid authorization format. Use: Bearer <token>', 401, 'AUTH_FORMAT')
         
         token = auth_header[7:].strip()
         
         if not token or len(token) < 100:
+            logger.warning(f"Token too short from {request.remote_addr}: {len(token)} chars")
             return error_response('Invalid token', 401, 'AUTH_INVALID')
         
         # ── Step 2: Rate limiting ──
@@ -56,16 +59,18 @@ def require_auth(f):
         
         try:
             # ── Step 3: Try Firebase token ──
+            logger.debug(f"Verifying token for IP {client_ip}, length {len(token)}")
             user, auth_source = _authenticate_firebase(token)
             
             if user:
+                logger.info(f"Auth SUCCESS: {user.get('id', 'unknown')[:8]}, source: {auth_source}")
                 g.current_user = user
                 g.auth_source = auth_source
                 
                 # Log performance
                 duration_ms = (time.time() - start_time) * 1000
                 if duration_ms > 500:
-                    logger.warning(f"Slow auth: {duration_ms:.0f}ms for {user.get('id', 'unknown')}")
+                    logger.warning(f"Slow auth: {duration_ms:.0f}ms for {user.get('id', 'unknown')[:8]}")
                 
                 return f(*args, **kwargs)
             
@@ -73,10 +78,13 @@ def require_auth(f):
             emergency_user = verify_emergency_session(token)
             
             if emergency_user:
-                g.current_user = emergency_user
+                emergency_dict = emergency_user.to_dict() if hasattr(emergency_user, 'to_dict') else emergency_user
+                logger.info(f"Emergency auth for {emergency_dict.get('id', 'unknown')[:8]}")
+                g.current_user = emergency_dict
                 g.auth_source = 'emergency'
                 return f(*args, **kwargs)
             
+            logger.warning(f"Auth FAILED: No valid user found for token from {client_ip}")
             return error_response('Invalid or expired token', 401, 'AUTH_EXPIRED')
             
         except Exception as e:
@@ -97,13 +105,14 @@ def _authenticate_firebase(token: str):
     decoded_token = verify_id_token(token)
     
     if not decoded_token:
+        logger.debug("Token verification failed")
         return None, None
     
     user_info = extract_user_info(decoded_token)
     uid = user_info.get('uid')
     
     if not uid:
-        logger.error("Token verified but no UID found")
+        logger.error("Token verified but no UID found in decoded token")
         return None, None
     
     # ── Get user data (try Redis first, then DB) ──
@@ -111,9 +120,11 @@ def _authenticate_firebase(token: str):
     
     if user_data:
         # Cache hit - return immediately (no DB query)
+        logger.debug(f"User cache HIT for {uid[:8]}")
         return user_data, 'firebase_cached'
     
     # Cache miss - provision user (DB read/write) and cache
+    logger.debug(f"User cache MISS for {uid[:8]}, provisioning")
     try:
         user = provision_user_cached(user_info)
         
@@ -123,9 +134,10 @@ def _authenticate_firebase(token: str):
             cache_user_data(uid, user_dict)
             return user_dict, 'firebase'
         
+        logger.error(f"User provisioning returned None for {uid[:8]}")
         return None, None
     except Exception as e:
-        logger.error(f"User provisioning failed for {uid}: {e}", exc_info=True)
+        logger.error(f"User provisioning failed for {uid[:8]}: {e}", exc_info=True)
         return None, None
 
 

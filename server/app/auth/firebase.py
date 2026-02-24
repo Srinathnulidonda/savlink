@@ -16,7 +16,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 _firebase_app = None
-_initialization_lock = None
 
 # ─── Performance Metrics ──────────────────────────────────────────────
 _metrics = {
@@ -42,13 +41,16 @@ def initialize_firebase():
         config_dict = json.loads(config_json)
         cred = credentials.Certificate(config_dict)
         _firebase_app = firebase_admin.initialize_app(cred)
-        logger.info("✅ Firebase Admin SDK initialized")
+        logger.info("✅ Firebase Admin SDK initialized successfully")
+        logger.info(f"Project ID: {config_dict.get('project_id')}")
         return _firebase_app
     except ValueError:
         # Already initialized
         _firebase_app = firebase_admin.get_app()
+        logger.info("Firebase Admin SDK already initialized")
         return _firebase_app
     except Exception as e:
+        logger.error(f"Failed to initialize Firebase: {e}", exc_info=True)
         raise ValueError(f"Failed to initialize Firebase: {e}")
 
 
@@ -64,15 +66,18 @@ def verify_id_token(token: str) -> Optional[Dict[str, Any]]:
     Returns decoded token data or None if invalid.
     """
     if not token or len(token) < 100:
+        logger.warning("Token validation failed: too short or empty")
         return None
     
     # ── Step 1: Check Redis cache ──
     cached = get_cached_token_verification(token)
     if cached:
         _metrics['cache_hits'] += 1
+        logger.debug(f"Token cache HIT for uid={cached.get('uid', 'unknown')[:8]}")
         return cached
     
     _metrics['cache_misses'] += 1
+    logger.debug("Token cache MISS - verifying with Firebase")
     
     # ── Step 2: Verify with Firebase ──
     try:
@@ -84,26 +89,27 @@ def verify_id_token(token: str) -> Optional[Dict[str, Any]]:
         
         _metrics['verifications'] += 1
         
+        uid = decoded_token.get('uid', 'unknown')
+        logger.info(f"✅ Firebase token verified: uid={uid[:8]} in {duration:.0f}ms")
+        
         if duration > 1000:
-            logger.warning(f"Slow Firebase verification: {duration:.0f}ms")
-        else:
-            logger.debug(f"Firebase verification: {duration:.0f}ms")
+            logger.warning(f"⚠️  Slow Firebase verification: {duration:.0f}ms")
         
         # ── Step 3: Cache the result ──
         cache_token_verification(token, decoded_token)
         
         return decoded_token
         
-    except firebase_auth.ExpiredIdTokenError:
-        logger.debug("Token expired")
+    except firebase_auth.ExpiredIdTokenError as e:
+        logger.warning(f"Token expired: {str(e)[:100]}")
         invalidate_token_cache(token)
         return None
-    except firebase_auth.RevokedIdTokenError:
-        logger.warning("Token revoked")
+    except firebase_auth.RevokedIdTokenError as e:
+        logger.warning(f"Token revoked: {str(e)[:100]}")
         invalidate_token_cache(token)
         return None
-    except firebase_auth.InvalidIdTokenError:
-        logger.debug("Token invalid")
+    except firebase_auth.InvalidIdTokenError as e:
+        logger.warning(f"Invalid token format: {str(e)[:100]}")
         return None
     except firebase_auth.CertificateFetchError as e:
         # Network issue fetching Google's public keys
@@ -111,21 +117,22 @@ def verify_id_token(token: str) -> Optional[Dict[str, Any]]:
         _metrics['errors'] += 1
         return None
     except Exception as e:
-        logger.error(f"Firebase verification error: {e}")
+        logger.error(f"Firebase verification error: {e}", exc_info=True)
         _metrics['errors'] += 1
         return None
 
 
 def extract_user_info(decoded_token: Dict[str, Any]) -> Dict[str, Any]:
     """Extract normalized user info from decoded token (cached or fresh)."""
+    firebase_data = decoded_token.get('firebase', {})
+    
     return {
         'uid': decoded_token.get('uid'),
         'email': decoded_token.get('email'),
         'name': decoded_token.get('name'),
         'picture': decoded_token.get('picture'),
         'email_verified': decoded_token.get('email_verified', False),
-        'auth_provider': decoded_token.get('provider', 
-                          decoded_token.get('firebase', {}).get('sign_in_provider', 'password'))
+        'auth_provider': decoded_token.get('provider', firebase_data.get('sign_in_provider', 'password'))
     }
 
 

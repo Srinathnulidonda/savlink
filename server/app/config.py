@@ -2,7 +2,7 @@
 import os
 import json
 import logging
-from datetime import timedelta  # ← ADD THIS
+from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,16 @@ class Config:
     @classmethod
     def init_app(cls, app):
         app.config['CORS_ORIGINS'] = cls.CORS_ORIGINS
+        
+        # ✅ Firebase config debugging
+        if cls.FIREBASE_CONFIG_JSON:
+            try:
+                firebase_config = json.loads(cls.FIREBASE_CONFIG_JSON)
+                logger.info("Firebase project: %s", firebase_config.get('project_id'))
+                logger.info("Firebase client_email: %s", firebase_config.get('client_email'))
+            except Exception as e:
+                logger.error("Invalid Firebase config JSON: %s", e)
+        
         if cls.FLASK_ENV == 'production':
             if not cls.SQLALCHEMY_DATABASE_URI:
                 raise ValueError('DATABASE_URL must be set in production')

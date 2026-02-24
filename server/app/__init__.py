@@ -57,7 +57,8 @@ def _register_hooks(app):
             if dur > 10:
                 logger.warning("Slow request: %s %s %.2fs", request.method, request.path, dur)
 
-        resp.headers['Cross-Origin-Opener-Policy'] = 'unsafe-none'
+        # ✅ FIXED: Allow popups for Firebase Google Sign-In
+        resp.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
         resp.headers['Cross-Origin-Embedder-Policy'] = 'unsafe-none'
         resp.headers['X-Content-Type-Options'] = 'nosniff'
         resp.headers['X-Frame-Options'] = 'SAMEORIGIN'
@@ -138,7 +139,7 @@ def _register_blueprints(app):
     from .trash import trash_bp
     from .users import users_bp
 
-    app.register_blueprint(auth_bp,       url_prefix='/auth')
+    app.register_blueprint(auth_bp)
     app.register_blueprint(links_bp,      url_prefix='/api/links')
     app.register_blueprint(folders_bp,    url_prefix='/api/folders')
     app.register_blueprint(tags_bp,       url_prefix='/api/tags')
