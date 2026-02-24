@@ -1,4 +1,3 @@
-# server/app/auth/firebase.py
 import json
 import os
 import logging
@@ -36,23 +35,50 @@ def verify_id_token(token: str) -> Optional[Dict[str, Any]]:
     if not token or len(token) < 100:
         return None
 
+    # ── Redis cache check ──
     cached = get_cached_token_verification(token)
     if cached:
         return cached
 
     try:
         initialize_firebase()
-        decoded = firebase_auth.verify_id_token(token, check_revoked=True)
-        cache_token_verification(token, decoded)
-        return decoded
-    except (firebase_auth.ExpiredIdTokenError, firebase_auth.RevokedIdTokenError):
-        invalidate_token_cache(token)
+    except Exception as e:
+        logger.error("Firebase not initialized: %s", e)
         return None
-    except (firebase_auth.InvalidIdTokenError, firebase_auth.CertificateFetchError):
+
+    # ── FIX: verify WITHOUT check_revoked first (fast, no network call) ──
+    # Then attempt revocation check separately so a transient network
+    # error during the revocation lookup doesn't reject a valid token.
+    try:
+        decoded = firebase_auth.verify_id_token(token, check_revoked=False)
+    except firebase_auth.ExpiredIdTokenError:
+        invalidate_token_cache(token)
+        logger.debug("Token expired")
+        return None
+    except firebase_auth.InvalidIdTokenError as e:
+        logger.debug("Invalid token: %s", e)
+        return None
+    except firebase_auth.CertificateFetchError as e:
+        logger.warning("Certificate fetch error (will retry): %s", e)
         return None
     except Exception as e:
-        logger.error("Firebase verification error: %s", e)
+        logger.error("Firebase token verification error: %s", e)
         return None
+
+    # ── Soft revocation check (best-effort, non-blocking) ──
+    try:
+        firebase_auth.verify_id_token(token, check_revoked=True)
+    except firebase_auth.RevokedIdTokenError:
+        invalidate_token_cache(token)
+        logger.info("Token was revoked for uid=%s", decoded.get('uid'))
+        return None
+    except Exception as e:
+        # Network issue during revocation check — token signature is
+        # already verified above, so we accept it and log a warning.
+        logger.warning("Revocation check failed (accepting token): %s", e)
+
+    cache_token_verification(token, decoded)
+    return decoded
 
 
 def extract_user_info(decoded_token: Dict[str, Any]) -> Dict[str, Any]:

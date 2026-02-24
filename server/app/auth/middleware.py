@@ -1,4 +1,3 @@
-# server/app/auth/middleware.py
 import logging
 from functools import wraps
 from flask import request, g
@@ -9,6 +8,11 @@ from app.auth.sessions import verify_emergency_session
 from app.auth.redis import get_cached_user_data, cache_user_data, check_auth_rate_limit
 
 logger = logging.getLogger(__name__)
+
+
+class ProvisioningError(Exception):
+    """Raised when token is valid but user provisioning fails (DB issue)."""
+    pass
 
 
 class UserProxy(dict):
@@ -46,6 +50,11 @@ def get_client_ip() -> str:
 
 
 def _authenticate_firebase(token: str):
+    """
+    Returns (user_dict, source) on success.
+    Returns (None, None) when the token itself is invalid.
+    Raises ProvisioningError when the token is valid but DB work fails.
+    """
     decoded = verify_id_token(token)
     if not decoded:
         return None, None
@@ -55,16 +64,22 @@ def _authenticate_firebase(token: str):
     if not uid:
         return None, None
 
+    # Fast path: cached user data in Redis
     cached = get_cached_user_data(uid)
     if cached:
         return cached, 'firebase_cached'
 
+    # Slow path: provision in DB
     try:
         user = provision_user_cached(info)
-        return (user.to_dict(), 'firebase') if user else (None, None)
-    except Exception as e:
-        logger.error("Provisioning failed for %s: %s", uid, e)
+        if user:
+            return user.to_dict(), 'firebase'
         return None, None
+    except Exception as e:
+        # FIX: propagate as ProvisioningError so the caller can
+        # return 503 instead of 401 — the token IS valid.
+        logger.error("Provisioning failed for %s: %s", uid, e)
+        raise ProvisioningError(f"User provisioning failed for {uid}") from e
 
 
 def require_auth(f):
@@ -91,6 +106,7 @@ def require_auth(f):
                 g.auth_source = source
                 return f(*args, **kwargs)
 
+            # Firebase auth failed — try emergency session
             emergency_user = verify_emergency_session(token)
             if emergency_user:
                 data = emergency_user.to_dict() if hasattr(emergency_user, 'to_dict') else emergency_user
@@ -99,6 +115,17 @@ def require_auth(f):
                 return f(*args, **kwargs)
 
             return error_response('Invalid or expired token', 401, 'AUTH_EXPIRED')
+
+        except ProvisioningError as e:
+            # FIX: Token was valid but DB/provisioning failed.
+            # Return 503 so the frontend retries instead of treating it as
+            # a permanent auth failure.
+            logger.error("Provisioning error (returning 503): %s", e)
+            return error_response(
+                'Service temporarily unavailable, please retry',
+                503,
+                'PROVISIONING_ERROR'
+            )
         except Exception as e:
             logger.error("Auth error: %s", e, exc_info=True)
             return error_response('Authentication failed', 500, 'AUTH_ERROR')
