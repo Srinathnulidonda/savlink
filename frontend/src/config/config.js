@@ -2,7 +2,7 @@
 
 export const config = {
     apiBaseUrl: import.meta.env.VITE_API_URL,
-    
+
     appName: 'Savlink',
     appVersion: '.001',
 
@@ -14,26 +14,26 @@ export const config = {
     },
 
     tokens: {
-        accessTokenKey: 'auth_token',
+        accessTokenKey: 'savlink_token',
         refreshTokenKey: 'savlink_refresh_token',
-        userDataKey: 'user',
+        userDataKey: 'savlink_user',
         tokenExpiry: 15 * 60 * 1000,
         refreshExpiry: 7 * 24 * 60 * 60 * 1000,
     },
 
     endpoints: {
         auth: {
-            register: '/auth/register',
-            login: '/auth/login',
-            logout: '/auth/logout',
-            refresh: '/auth/refresh',
-            verifyEmail: '/auth/verify-email',
-            resendVerification: '/auth/resend-verification',
-            forgotPassword: '/auth/forgot-password',
-            resetPassword: '/auth/reset-password',
-            changePassword: '/auth/change-password',
-            deleteAccount: '/auth/delete-account',
-            profile: '/auth/me',
+            register: '/api/auth/register',
+            login: '/api/auth/login',
+            logout: '/api/auth/logout',
+            refresh: '/api/auth/refresh',
+            verifyEmail: '/api/auth/verify-email',
+            resendVerification: '/api/auth/resend-verification',
+            forgotPassword: '/api/auth/forgot-password',
+            resetPassword: '/api/auth/reset-password',
+            changePassword: '/api/auth/change-password',
+            deleteAccount: '/api/auth/delete-account',
+            profile: '/api/auth/me',
         },
         links: {
             base: '/api/links',
@@ -45,8 +45,8 @@ export const config = {
         dashboard: {
             links: '/api/dashboard/links',
             stats: '/api/dashboard/stats',
-            home: '/api/dashboard/home'
-        }
+            home: '/api/dashboard/home',
+        },
     },
 
     ui: {

@@ -18,6 +18,7 @@ import {
   browserSessionPersistence
 } from 'firebase/auth'
 import { app } from '../../config/firebase'
+import config from '../../config/config'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL
 
@@ -59,14 +60,12 @@ const ERROR_MESSAGES = {
   'auth/missing-initial-state': 'Browser session issue. Please try again.'
 }
 
-//  Firebase Setup 
 const auth = getAuth(app)
 const googleProvider = new GoogleAuthProvider()
 googleProvider.setCustomParameters({ prompt: 'select_account' })
 googleProvider.addScope('email')
 googleProvider.addScope('profile')
 
-//  Internal State 
 let _currentUser = null
 let _currentToken = null
 let _listeners = new Set()
@@ -79,12 +78,11 @@ let _lastSyncTime = 0
 let _googleLoginInProgress = false
 let _authStateVersion = 0
 
-//  Safe Storage 
 const storage = {
   set(key, value) {
     try {
       localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
-    } catch { /* quota exceeded or private browsing */ }
+    } catch {}
   },
   get(key, parse = true) {
     try {
@@ -94,7 +92,7 @@ const storage = {
     } catch { return null }
   },
   remove(key) {
-    try { localStorage.removeItem(key) } catch { /* noop */ }
+    try { localStorage.removeItem(key) } catch {}
   },
   clear() {
     Object.values(STORAGE_KEYS).forEach(key => this.remove(key))
@@ -110,7 +108,6 @@ const storage = {
   }
 }
 
-//  Notification System 
 function notifyListeners() {
   _authStateVersion++
   const snapshot = { user: _currentUser, token: _currentToken }
@@ -119,7 +116,6 @@ function notifyListeners() {
   })
 }
 
-//  Token Management 
 async function refreshToken(force = false) {
   const firebaseUser = auth.currentUser
   if (!firebaseUser) {
@@ -153,7 +149,6 @@ function stopTokenRefreshTimer() {
   if (_tokenRefreshTimer) { clearInterval(_tokenRefreshTimer); _tokenRefreshTimer = null }
 }
 
-//  Wait for auth state to propagate 
 async function _waitForAuthReady(timeoutMs = 3000) {
   const startVersion = _authStateVersion
   const deadline = Date.now() + timeoutMs
@@ -169,7 +164,12 @@ async function _waitForAuthReady(timeoutMs = 3000) {
   return _currentUser
 }
 
-//  Backend Sync 
+function getSyncUrl() {
+  const base = API_BASE_URL.replace(/\/$/, '')
+  const endpoint = config.endpoints.auth.profile
+  return `${base}${endpoint}`
+}
+
 async function syncWithBackend(token, forceSync = false, _attempt = 0) {
   if (_isSyncing && _attempt === 0) return _currentUser
 
@@ -184,7 +184,7 @@ async function syncWithBackend(token, forceSync = false, _attempt = 0) {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), TIMING.MAX_RETRY_MS)
 
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    const response = await fetch(getSyncUrl(), {
       method: 'GET',
       headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
       signal: controller.signal,
@@ -209,6 +209,10 @@ async function syncWithBackend(token, forceSync = false, _attempt = 0) {
         notifyListeners()
         return _currentUser
       }
+    }
+
+    if (response.status === 404) {
+      console.warn(`[Auth] Sync endpoint not found: ${getSyncUrl()}`)
     }
 
     const retryable = [401, 502, 503]
@@ -252,7 +256,6 @@ function stopBackgroundSync() {
   if (_backgroundSyncTimer) { clearInterval(_backgroundSyncTimer); _backgroundSyncTimer = null }
 }
 
-//  Auth State Handler 
 async function handleAuthStateChange(firebaseUser) {
   if (firebaseUser) {
     const token = await refreshToken(true)
@@ -274,10 +277,10 @@ async function handleAuthStateChange(firebaseUser) {
 
     storage.set(STORAGE_KEYS.USER, firebaseData)
     storage.set(STORAGE_KEYS.TOKEN, token)
-    
+
     _currentUser = firebaseData
     _currentToken = token
-    
+
     notifyListeners()
 
     startTokenRefreshTimer()
@@ -293,7 +296,6 @@ async function handleAuthStateChange(firebaseUser) {
   }
 }
 
-//  Sign Out Handler 
 async function handleSignOut(reason = 'user_action') {
   try {
     stopTokenRefreshTimer()
@@ -313,7 +315,6 @@ async function handleSignOut(reason = 'user_action') {
   }
 }
 
-//  Initialization 
 function initialize() {
   if (_initPromise) return _initPromise
 
@@ -330,7 +331,7 @@ function initialize() {
       const preference = storage.get(STORAGE_KEYS.PREFERENCE, false)
       try {
         await setPersistence(auth, preference === 'session' ? browserSessionPersistence : browserLocalPersistence)
-      } catch { /* default */ }
+      } catch {}
 
       await Promise.race([
         new Promise((res) => {
@@ -379,7 +380,20 @@ onAuthStateChanged(auth, async (user) => {
 
 initialize()
 
-//  Exported Service 
+function getErrorMessage(code) {
+  return ERROR_MESSAGES[code] || 'An error occurred. Please try again.'
+}
+
+function detectRedirectRequired() {
+  const isIframe = window !== window.parent
+  let hasStorageIssues = false
+  try { sessionStorage.setItem('__test', '1'); sessionStorage.removeItem('__test') }
+  catch { hasStorageIssues = true }
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  const isCrossOriginIsolated = window.crossOriginIsolated === true
+  return isIframe || hasStorageIssues || isMobile || isCrossOriginIsolated
+}
+
 export const AuthService = {
   async ensureInitialized() {
     if (_initialized) return true
@@ -423,7 +437,7 @@ export const AuthService = {
       try {
         await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
         storage.set(STORAGE_KEYS.PREFERENCE, rememberMe ? 'local' : 'session')
-      } catch { /* default */ }
+      } catch {}
 
       await signInWithEmailAndPassword(auth, email, password)
       await _waitForAuthReady(3000)
@@ -452,7 +466,7 @@ export const AuthService = {
       try {
         await setPersistence(auth, browserLocalPersistence)
         storage.set(STORAGE_KEYS.PREFERENCE, 'local')
-      } catch { /* default */ }
+      } catch {}
 
       const mustRedirect = detectRedirectRequired()
 
@@ -471,8 +485,10 @@ export const AuthService = {
               popupError.code === 'auth/cancelled-popup-request') {
             return { success: false, cancelled: true }
           }
-          if (popupError.code === 'auth/popup-blocked') {
-            console.warn('[Auth] Popup blocked, falling back to redirect')
+          if (popupError.code === 'auth/popup-blocked' ||
+              popupError.code === 'auth/unauthorized-domain' ||
+              popupError.message?.includes('Cross-Origin-Opener-Policy')) {
+            console.warn('[Auth] Popup issue, falling back to redirect:', popupError.code || popupError.message)
           } else {
             throw popupError
           }
@@ -551,8 +567,8 @@ export const AuthService = {
     _listeners.add(callback)
 
     if (_initialized || _currentUser) {
-      try { 
-        callback({ user: _currentUser, token: _currentToken }) 
+      try {
+        callback({ user: _currentUser, token: _currentToken })
       } catch (e) {
         console.error('[AuthService] Listener callback error:', e)
       }
@@ -582,25 +598,12 @@ export const AuthService = {
       listeners: _listeners.size,
       googleLoginActive: _googleLoginInProgress,
       authStateVersion: _authStateVersion,
-      persistence: storage.get(STORAGE_KEYS.PREFERENCE, false)
+      persistence: storage.get(STORAGE_KEYS.PREFERENCE, false),
+      syncUrl: getSyncUrl()
     }
   }
 }
 
-//  Helpers 
-function getErrorMessage(code) {
-  return ERROR_MESSAGES[code] || 'An error occurred. Please try again.'
-}
-
-function detectRedirectRequired() {
-  const isIframe = window !== window.parent
-  let hasStorageIssues = false
-  try { sessionStorage.setItem('__test', '1'); sessionStorage.removeItem('__test') }
-  catch { hasStorageIssues = true }
-  return isIframe || hasStorageIssues
-}
-
-//  Cleanup 
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     stopTokenRefreshTimer()

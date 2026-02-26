@@ -57,7 +57,6 @@ def _register_hooks(app):
             if dur > 10:
                 logger.warning("Slow request: %s %s %.2fs", request.method, request.path, dur)
 
-        # ✅ FIXED: Allow popups for Firebase Google Sign-In
         resp.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
         resp.headers['Cross-Origin-Embedder-Policy'] = 'unsafe-none'
         resp.headers['X-Content-Type-Options'] = 'nosniff'
@@ -67,7 +66,7 @@ def _register_hooks(app):
         vary = set(filter(None, resp.headers.get('Vary', '').split(', '))) | {'Origin'}
         resp.headers['Vary'] = ', '.join(vary)
 
-        if request.path.startswith(('/api/', '/auth/')):
+        if request.path.startswith('/api/'):
             resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         elif request.path.startswith('/r/'):
             resp.headers['Cache-Control'] = 'public, max-age=300'
@@ -139,7 +138,7 @@ def _register_blueprints(app):
     from .trash import trash_bp
     from .users import users_bp
 
-    app.register_blueprint(auth_bp,       url_prefix='/auth')
+    app.register_blueprint(auth_bp,       url_prefix='/api/auth')
     app.register_blueprint(links_bp,      url_prefix='/api/links')
     app.register_blueprint(folders_bp,    url_prefix='/api/folders')
     app.register_blueprint(tags_bp,       url_prefix='/api/tags')
@@ -152,6 +151,11 @@ def _register_blueprints(app):
     app.register_blueprint(activity_bp,   url_prefix='/api/activity')
     app.register_blueprint(trash_bp,      url_prefix='/api/trash')
     app.register_blueprint(users_bp,      url_prefix='/api/user')
+
+    if app.config.get('DEBUG'):
+        for rule in sorted(app.url_map.iter_rules(), key=lambda r: r.rule):
+            if rule.endpoint != 'static':
+                logger.debug("Route: %-40s → %s", rule.rule, rule.endpoint)
 
 
 def _register_errors(app):
