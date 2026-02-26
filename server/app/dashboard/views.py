@@ -228,6 +228,7 @@ def get_stats(user_id: str) -> Dict[str, Any]:
             },
             'counts': {
                 'all': _safe_int(r.active),
+                'recent': _safe_int(r.this_week),
                 'starred': _safe_int(r.starred),
                 'pinned': _safe_int(r.pinned),
                 'archive': _safe_int(r.archived),
@@ -268,18 +269,14 @@ def get_home_data(user_id: str) -> Dict[str, Any]:
         .limit(10)
         .all()
     )
-    
+
     week_ago = datetime.utcnow() - timedelta(days=7)
     na = Link.archived_at.is_(None)
-    
+
     total = Link.query.filter(Link.user_id == user_id, Link.soft_deleted == False, na).count()
+    starred_count = Link.query.filter(Link.user_id == user_id, Link.soft_deleted == False, na, Link.starred == True).count()
     folders_count = Folder.query.filter(Folder.user_id == user_id, Folder.soft_deleted == False).count()
-    starred_count = Link.query.filter(
-        Link.user_id == user_id, Link.soft_deleted == False, na, Link.starred == True
-    ).count()
-    this_week = Link.query.filter(
-        Link.user_id == user_id, Link.soft_deleted == False, Link.created_at >= week_ago
-    ).count()
+    this_week = Link.query.filter(Link.user_id == user_id, Link.soft_deleted == False, Link.created_at >= week_ago).count()
     clicks = (
         db.session.query(func.coalesce(func.sum(Link.click_count), 0))
         .filter(Link.user_id == user_id, Link.soft_deleted == False, Link.link_type == 'shortened')
@@ -325,6 +322,7 @@ def _serialize_folder_preview(folder: Folder) -> Dict[str, Any]:
         'icon': folder.icon or '📁',
         'color': folder.color,
         'count': count,
+        'link_count': count,
         'pinned': folder.pinned
     }
 
@@ -333,7 +331,7 @@ def _get_recent_activity(user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
     try:
         from app.models.activity_log import ActivityLog
         from app.utils.time import relative_time
-        
+
         activities = (
             ActivityLog.query
             .filter(ActivityLog.user_id == user_id)
@@ -341,34 +339,32 @@ def _get_recent_activity(user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
             .limit(limit)
             .all()
         )
-        
+
         result = []
         for a in activities:
             action_parts = (a.action or '').split('.')
             action_type = action_parts[1] if len(action_parts) > 1 else action_parts[0]
-            
-            description = _build_activity_description(a)
-            
+
             result.append({
                 'id': a.id,
                 'type': action_type,
                 'action': a.action,
-                'description': description,
+                'description': _build_activity_text(a),
                 'time': relative_time(a.created_at) if a.created_at else '',
                 'created_at': a.created_at.isoformat() if a.created_at else None
             })
-        
+
         return result
     except Exception as e:
         logger.warning("Failed to get activity: %s", e)
         return []
 
 
-def _build_activity_description(activity) -> str:
+def _build_activity_text(activity) -> str:
     action = activity.action or ''
     details = activity.details or {}
     title = details.get('title', '')
-    
+
     verbs = {
         'link.created': 'Saved',
         'link.updated': 'Updated',
@@ -380,22 +376,31 @@ def _build_activity_description(activity) -> str:
         'link.archived': 'Archived',
         'link.restored': 'Restored',
         'link.moved': 'Moved',
+        'link.duplicated': 'Duplicated',
+        'link.tags_updated': 'Updated tags on',
+        'link.frequent_toggled': 'Toggled frequent on',
+        'link.toggled_active': 'Toggled active on',
+        'link.expiry_extended': 'Extended expiry on',
         'folder.created': 'Created folder',
         'folder.deleted': 'Deleted folder',
         'folder.updated': 'Updated folder',
         'bulk.delete': 'Deleted multiple links',
-        'bulk.archive': 'Archived multiple links'
+        'bulk.archive': 'Archived multiple links',
+        'bulk.pin': 'Pinned multiple links',
+        'bulk.star': 'Starred multiple links',
+        'bulk.restore': 'Restored multiple links'
     }
-    
+
     verb = verbs.get(action, action.replace('.', ' ').replace('_', ' ').title())
-    
-    if 'bulk' in action:
-        count = details.get('count', 0)
-        return f"{verb} ({count} items)"
-    
+
+    if action.startswith('bulk.'):
+        count = details.get('count', len(details.get('link_ids', [])))
+        return f"{verb} ({count} items)" if count else verb
+
     if title:
-        return f'{verb} "{title[:50]}{"..." if len(title) > 50 else ""}"'
-    
+        display = title[:45] + '…' if len(title) > 45 else title
+        return f'{verb} "{display}"'
+
     return verb
 
 
