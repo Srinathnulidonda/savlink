@@ -7,7 +7,6 @@ from flask_cors import CORS
 from .config import get_config
 from .extensions import db, migrate, redis_client
 from .database import db_manager
-from .banner import log_startup_banner
 
 logger = logging.getLogger(__name__)
 
@@ -28,27 +27,65 @@ def create_app(config_class=None):
     _register_blueprints(app)
     _register_errors(app)
 
-    # Display startup banner
-    log_startup_banner(app, redis_client)
-
+    _log_startup_banner(app)
     return app
 
 
-def _init_extensions(app):
-    db.init_app(app)
-    migrate.init_app(app, db)
-    db_manager.init_app(app)
+def _log_startup_banner(app):
+    """Display professional startup banner"""
+    import os
+    from datetime import datetime, timezone
 
-    cors_origins = app.config.get('CORS_ORIGINS', [])
-    logger.info("[CORS] Allowed origins: %d configured", len(cors_origins))
+    env = app.config.get('FLASK_ENV', 'development')
+    debug = app.config.get('DEBUG', False)
+    port = os.environ.get('PORT', '10000')
+    cors_count = len(app.config.get('CORS_ORIGINS', []))
 
-    CORS(app,
-         origins=cors_origins,
-         supports_credentials=True,
-         allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-         expose_headers=['Content-Type', 'Authorization'],
-         max_age=86400)
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    db_driver = db_uri.split('://')[0].split('+')[0] if '://' in db_uri else 'none'
+
+    firebase_ok = bool(app.config.get('FIREBASE_CONFIG_JSON'))
+    redis_ok = redis_client.available
+
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+
+    services = [
+        ("database", db_driver, db_driver != 'none'),
+        ("redis", "connected" if redis_ok else "unavailable", redis_ok),
+        ("auth", "firebase" if firebase_ok else "disabled", firebase_ok),
+    ]
+
+    all_ok = all(h for _, _, h in services)
+
+    logger.info("")
+    logger.info("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    logger.info("")
+    logger.info("  api.savlink")
+    logger.info("  v0.3.0 · Link Management API")
+    logger.info("")
+    logger.info("  ── Configuration ──────────────────────────────")
+    logger.info("")
+    logger.info("    environment   %s", env)
+    logger.info("    port          %s", port)
+    logger.info("    debug         %s", "on" if debug else "off")
+    logger.info("    cors          %d origins", cors_count)
+    logger.info("    blueprints    13")
+    logger.info("")
+    logger.info("  ── Services ───────────────────────────────────")
+    logger.info("")
+    for name, value, healthy in services:
+        icon = "✓" if healthy else "✗"
+        logger.info("    %s  %-12s  %s", icon, name, value)
+    logger.info("")
+    logger.info("  ── Status ─────────────────────────────────────")
+    logger.info("")
+    logger.info("    %s  %s", "●" if all_ok else "◐", "All systems operational" if all_ok else "Degraded mode")
+    logger.info("    Started %s", now)
+    logger.info("")
+    logger.info("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    logger.info("")
+    logger.info("  ✓ Ready to accept connections")
+    logger.info("")
 
 
 def _register_hooks(app):
