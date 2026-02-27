@@ -3,10 +3,12 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import { useEffect, lazy } from 'react'
 import { RequireAuth } from '../auth/guards/RequireAuth'
 import Home from '../public-site/pages/Home'
-import VerifyEmail from '../auth/pages/VerifyEmail'
 
 const Login = lazy(() => import('../auth/pages/Login'))
 const Register = lazy(() => import('../auth/pages/Register'))
+const VerifyEmail = lazy(() => import('../auth/pages/VerifyEmail'))
+const ForgotPassword = lazy(() => import('../auth/pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('../auth/pages/ResetPassword'))
 const Dashboard = lazy(() => import('../dashboard/DashboardApp'))
 const NotFound = lazy(() => import('../public-site/pages/NotFound'))
 
@@ -60,6 +62,8 @@ export default function Router() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/auth/callback" element={<Login />} />
 
         <Route

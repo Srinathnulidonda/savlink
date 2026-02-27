@@ -1,5 +1,4 @@
 // frontend/src/auth/context/AuthContext.jsx
-
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { AuthService } from '../services/auth.service'
 import apiService from '../../utils/api'
@@ -30,7 +29,6 @@ export function AuthProvider({ children }) {
 
     const unsubscribe = AuthService.onAuthStateChange(({ user: authUser, token }) => {
       if (!mountedRef.current) return
-
       if (authUser) {
         setUser(authUser)
         if (token) apiService.setAuthToken(token)
