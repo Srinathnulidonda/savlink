@@ -30,8 +30,34 @@ class FoldersService {
     return { success: false, error: response.error || 'Folder not found' };
   }
 
+  async getFolderBySlug(slug) {
+    const response = await apiService.get(`${BASE}/s/${encodeURIComponent(slug)}`);
+    if (response.success && response.data?.data) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: response.error || 'Folder not found' };
+  }
+
+  async getRootItems(params = {}) {
+    const response = await apiService.get(`${BASE}/root`, params);
+    if (response.success && response.data?.data) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: true, data: { folders: [], links: [], meta: { has_more: false }, stats: {} } };
+  }
+
   async getFolderLinks(id, params = {}) {
     const response = await apiService.get(`${BASE}/${id}/links`, params);
+    if (response.success && response.data?.data) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: true, data: { links: [], meta: { has_more: false } } };
+  }
+
+  async getFolderLinksBySlug(slug, params = {}) {
+    const response = await apiService.get(
+      `${BASE}/s/${encodeURIComponent(slug)}/links`, params
+    );
     if (response.success && response.data?.data) {
       return { success: true, data: response.data.data };
     }

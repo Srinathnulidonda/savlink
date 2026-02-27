@@ -1,16 +1,17 @@
 // src/dashboard/pages/collections/useCollection.js
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import FoldersService from '../../../services/folders.service';
 import LinksService from '../../../services/links.service';
 import { invalidateFolders, invalidateHome } from '../../../cache';
 import toast from 'react-hot-toast';
 
 export function useCollection() {
-  const { id } = useParams();
-  const folderId = parseInt(id, 10);
+  const { slug } = useParams();
+  const navigate = useNavigate();
 
   const [folder, setFolder] = useState(null);
+  const [folderId, setFolderId] = useState(null);
   const [children, setChildren] = useState([]);
   const [breadcrumb, setBreadcrumb] = useState([]);
   const [stats, setStats] = useState(null);
@@ -25,6 +26,7 @@ export function useCollection() {
 
   const mountedRef = useRef(true);
   const fetchIdRef = useRef(0);
+  const folderIdRef = useRef(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -34,6 +36,7 @@ export function useCollection() {
   useEffect(() => {
     setLinks([]);
     setFolder(null);
+    setFolderId(null);
     setChildren([]);
     setBreadcrumb([]);
     setStats(null);
@@ -41,25 +44,29 @@ export function useCollection() {
     setSearchQuery('');
     setError(null);
     setLoading(true);
+    folderIdRef.current = null;
     fetchFolder();
-  }, [folderId]);
+  }, [slug]);
 
   useEffect(() => {
-    if (!folder) return;
+    if (!folderIdRef.current) return;
     fetchLinks(true);
-  }, [folderId, searchQuery, sortBy, sortOrder]);
+  }, [searchQuery, sortBy, sortOrder]);
 
   const fetchFolder = useCallback(async () => {
     const fetchId = ++fetchIdRef.current;
     try {
-      const result = await FoldersService.getFolder(folderId);
+      const result = await FoldersService.getFolderBySlug(slug);
       if (!mountedRef.current || fetchId !== fetchIdRef.current) return;
       if (!result.success) {
         setError(result.error || 'Folder not found');
         setLoading(false);
         return;
       }
-      setFolder(result.data.folder);
+      const folderData = result.data.folder;
+      setFolder(folderData);
+      setFolderId(folderData.id);
+      folderIdRef.current = folderData.id;
       setChildren(result.data.children || []);
       setBreadcrumb(result.data.breadcrumb || []);
       setStats(result.data.stats || null);
@@ -74,9 +81,11 @@ export function useCollection() {
         setLoading(false);
       }
     }
-  }, [folderId]);
+  }, [slug]);
 
   const fetchLinks = useCallback(async (reset = false) => {
+    const id = folderIdRef.current;
+    if (!id) return;
     setLinksLoading(true);
     try {
       const params = {
@@ -87,7 +96,7 @@ export function useCollection() {
       if (searchQuery.trim()) params.search = searchQuery.trim();
       if (!reset && meta.next_cursor) params.cursor = meta.next_cursor;
 
-      const result = await FoldersService.getFolderLinks(folderId, params);
+      const result = await FoldersService.getFolderLinks(id, params);
       if (!mountedRef.current) return;
 
       if (result.success) {
@@ -102,7 +111,7 @@ export function useCollection() {
     } finally {
       if (mountedRef.current) setLinksLoading(false);
     }
-  }, [folderId, searchQuery, sortBy, sortOrder, meta.next_cursor]);
+  }, [searchQuery, sortBy, sortOrder, meta.next_cursor]);
 
   const loadMore = useCallback(() => {
     if (!meta.has_more || linksLoading) return;
@@ -175,6 +184,7 @@ export function useCollection() {
   }, [links, stats]);
 
   return {
+    slug,
     folderId,
     folder,
     children,

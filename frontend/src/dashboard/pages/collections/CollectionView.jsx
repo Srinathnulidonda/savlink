@@ -147,16 +147,17 @@ export default function CollectionView({ viewMode = 'grid', onAddLink, onCreateF
             isMobile={isMobile}
           />
 
-          <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="flex-1 overflow-y-auto overscroll-contain" style={isMobile ? { paddingBottom: `calc(56px + env(safe-area-inset-bottom, 0px) + 8px)` } : undefined}>
             {children.length > 0 && (
               <div className={`${isMobile ? 'px-4 pt-4' : 'px-6 pt-5'}`}>
                 <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2.5">
                   Folders
                 </h3>
-                <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mb-4">
+                <div className={viewMode === 'grid' ? 'grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4': 'space-y-0.5'}>
+
                   {children.map(child => (
                     <button key={child.id}
-                      onClick={() => navigate(`/dashboard/collections/${child.id}`)}
+                      onClick={() => navigate(`/dashboard/my-files/${child.slug}`)}
                       className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] hover:bg-white/[0.04] transition-all group text-left">
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
                         style={{ backgroundColor: `${child.color || '#6B7280'}15`, border: `1px solid ${child.color || '#6B7280'}30` }}>

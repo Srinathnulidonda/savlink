@@ -41,8 +41,9 @@ export default function Collections({
     return recent.slice(0, MAX_SLOTS).map(f => ({ ...f, _pinned: false }));
   }, [folders]);
 
-  const handleClick = (folder) => { navigate(`/dashboard/collections/${folder.id}`); onNavigate?.(); };
-  const isActive = (folder) => location.pathname === `/dashboard/collections/${folder.id}`;
+  const folderPath = (f) => `/dashboard/my-files/${f.slug}`;
+  const handleClick = (folder) => { navigate(folderPath(folder)); onNavigate?.(); };
+  const isActive = (folder) => location.pathname === folderPath(folder);
 
   const openProperties = useCallback((folder) => {
     setPropsFolder(folder);
@@ -66,7 +67,7 @@ export default function Collections({
 
   const handleContextMenu = useCallback((e, folder) => {
     if (!contextMenu?.open) return;
-    const path = `/dashboard/collections/${folder.id}`;
+    const path = folderPath(folder);
     const url = `${window.location.origin}${path}`;
 
     contextMenu.open(e, [
@@ -146,12 +147,9 @@ export default function Collections({
 
   const sectionHeader = (
     <div className="px-5 py-3 flex-shrink-0 flex items-center justify-between">
-      <span className="text-[11px] font-medium text-gray-600 uppercase tracking-wider">Collections</span>
-      <button
-        onClick={() => onCreateFolder?.()}
-        className="p-1 text-gray-600 hover:text-gray-400 rounded-md hover:bg-white/[0.04] transition-colors"
-        title="New folder"
-      >
+      <span className="text-[11px] font-medium text-gray-600 uppercase tracking-wider">Folders</span>
+      <button onClick={() => onCreateFolder?.()} title="New folder"
+        className="p-1 text-gray-600 hover:text-gray-400 rounded-md hover:bg-white/[0.04] transition-colors">
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
         </svg>

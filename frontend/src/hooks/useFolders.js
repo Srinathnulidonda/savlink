@@ -1,5 +1,4 @@
 // src/hooks/useFolders.js
-
 import { useCallback } from 'react';
 import { useCachedData, KEYS, STALE_TIMES } from '../cache';
 import FoldersService from '../services/folders.service';
@@ -11,6 +10,7 @@ export function useFolders() {
     return result.data.map(f => ({
       id: f.id,
       name: f.name,
+      slug: f.slug,
       emoji: f.icon || '📁',
       icon: f.icon,
       color: f.color,

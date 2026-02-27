@@ -7,6 +7,7 @@ from flask_cors import CORS
 from .config import get_config
 from .extensions import db, migrate, redis_client
 from .database import db_manager
+from .banner import log_startup_banner
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,9 @@ def create_app(config_class=None):
     _register_blueprints(app)
     _register_errors(app)
 
-    logger.info("Application ready — env=%s", app.config.get('FLASK_ENV'))
+    # Display startup banner
+    log_startup_banner(app, redis_client)
+
     return app
 
 
@@ -36,9 +39,8 @@ def _init_extensions(app):
     migrate.init_app(app, db)
     db_manager.init_app(app)
 
-    # Debug: Check what CORS origins are being loaded
     cors_origins = app.config.get('CORS_ORIGINS', [])
-    logger.info(f"CORS Origins configured: {cors_origins}")
+    logger.info("[CORS] Allowed origins: %d configured", len(cors_origins))
 
     CORS(app,
          origins=cors_origins,
@@ -59,7 +61,7 @@ def _register_hooks(app):
         if hasattr(g, 'request_start_time'):
             dur = time.time() - g.request_start_time
             if dur > 10:
-                logger.warning("Slow request: %s %s %.2fs", request.method, request.path, dur)
+                logger.warning("[SLOW] %s %s took %.2fs", request.method, request.path, dur)
 
         resp.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
         resp.headers['Cross-Origin-Embedder-Policy'] = 'unsafe-none'
@@ -81,7 +83,7 @@ def _register_hooks(app):
 def _register_health(app):
     @app.route('/')
     def _index():
-        return jsonify(service='savlink-backend', status='online', version='3.0.0')
+        return jsonify(service='api.savlink', status='online', version='0.3.0')
 
     @app.route('/ping')
     def _ping():
@@ -89,7 +91,7 @@ def _register_health(app):
 
     @app.route('/health')
     def _health():
-        return jsonify(status='healthy', service='savlink-backend', ts=time.time())
+        return jsonify(status='healthy', service='api.savlink', ts=time.time())
 
     @app.route('/health/full')
     def _health_full():
@@ -105,9 +107,9 @@ def _init_database(app):
         with app.app_context():
             result = db_manager.initialize_with_retry()
             if result['success']:
-                logger.info("Database initialized — %d tables", result.get('tables_count', 0))
+                logger.info("[DB] Initialized successfully — %d tables", result.get('tables_count', 0))
             else:
-                logger.error("Database init failed: %s", result.get('error'))
+                logger.error("[DB] Initialization failed: %s", result.get('error'))
 
     if app.config.get('FLASK_ENV') == 'production':
         threading.Thread(target=_task, daemon=True).start()
@@ -117,14 +119,14 @@ def _init_database(app):
 
 def _init_firebase(app):
     if not app.config.get('FIREBASE_CONFIG_JSON'):
-        logger.warning("FIREBASE_CONFIG_JSON not set — Firebase auth disabled")
+        logger.warning("[AUTH] Firebase config not set — authentication disabled")
         return
     try:
         from .auth.firebase import initialize_firebase
         initialize_firebase()
-        logger.info("Firebase initialized")
+        logger.info("[AUTH] Firebase initialized")
     except Exception as e:
-        logger.error("Firebase init failed: %s", e)
+        logger.error("[AUTH] Firebase initialization failed: %s", e)
 
 
 def _register_blueprints(app):
@@ -156,10 +158,7 @@ def _register_blueprints(app):
     app.register_blueprint(trash_bp,      url_prefix='/api/trash')
     app.register_blueprint(users_bp,      url_prefix='/api/user')
 
-    if app.config.get('DEBUG'):
-        for rule in sorted(app.url_map.iter_rules(), key=lambda r: r.rule):
-            if rule.endpoint != 'static':
-                logger.debug("Route: %-40s → %s", rule.rule, rule.endpoint)
+    logger.info("[ROUTES] Registered %d blueprints", 13)
 
 
 def _register_errors(app):
@@ -169,10 +168,10 @@ def _register_errors(app):
 
     @app.errorhandler(500)
     def _500(e):
-        logger.error("Internal error: %s", e, exc_info=True)
+        logger.error("[ERROR] Internal server error: %s", e, exc_info=True)
         return jsonify(success=False, error='Internal server error'), 500
 
     @app.errorhandler(Exception)
     def _unhandled(e):
-        logger.error("Unhandled: %s", e, exc_info=True)
+        logger.error("[ERROR] Unhandled exception: %s", e, exc_info=True)
         return jsonify(success=False, error='Server error'), 500

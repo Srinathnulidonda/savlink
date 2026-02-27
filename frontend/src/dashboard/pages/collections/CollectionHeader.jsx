@@ -55,10 +55,17 @@ export default function CollectionHeader({
     const trimmed = renameValue.trim();
     if (!trimmed || trimmed === folder.name) { setRenaming(false); return; }
     const result = await FoldersService.updateFolder(folder.id, { name: trimmed });
-    if (result.success) { toast.success('Renamed'); onRefresh?.(); }
-    else toast.error(result.error || 'Rename failed');
+    if (result.success) {
+      toast.success('Renamed');
+      if (result.data?.slug) {
+        navigate(`/dashboard/my-files/${result.data.slug}`, { replace: true });
+      }
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Rename failed');
+    }
     setRenaming(false);
-  }, [renameValue, folder, onRefresh]);
+  }, [renameValue, folder, onRefresh, navigate]);
 
   const handleDelete = useCallback(async () => {
     setMenuOpen(false);
@@ -84,17 +91,15 @@ export default function CollectionHeader({
   return (
     <div className="flex-shrink-0 border-b border-white/[0.05]">
       <div className={`${isMobile ? 'px-4 pt-4 pb-3' : 'px-6 pt-5 pb-4'}`}>
+        {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-[12px] text-gray-600 mb-3">
-          <button onClick={() => navigate('/dashboard/home')}
-            className="hover:text-gray-400 transition-colors">Home</button>
-          <ChevronRight />
           <button onClick={() => navigate('/dashboard/my-files')}
-            className="hover:text-gray-400 transition-colors">Collections</button>
+            className="hover:text-gray-400 transition-colors">My Files</button>
           {breadcrumb.map((crumb, i) => (
             <span key={crumb.id} className="flex items-center gap-1.5">
               <ChevronRight />
               {i < breadcrumb.length - 1 ? (
-                <button onClick={() => navigate(`/dashboard/collections/${crumb.id}`)}
+                <button onClick={() => navigate(`/dashboard/my-files/${crumb.slug}`)}
                   className="hover:text-gray-400 transition-colors">{crumb.name}</button>
               ) : (
                 <span className="text-gray-400 font-medium">{crumb.name}</span>
@@ -170,7 +175,7 @@ export default function CollectionHeader({
                       <div className="my-1 mx-2.5 border-t border-gray-800/40" />
                       <MenuItem onClick={async () => {
                         setMenuOpen(false);
-                        const url = `${window.location.origin}/dashboard/collections/${folder.id}`;
+                        const url = `${window.location.origin}/dashboard/my-files/${folder.slug}`;
                         try { await navigator.clipboard.writeText(url); toast.success('Link copied'); }
                         catch { toast.error('Copy failed'); }
                       }}>Copy link</MenuItem>
@@ -184,7 +189,26 @@ export default function CollectionHeader({
           </div>
         </div>
 
-        {!isMobile && (
+        {/* Search */}
+        {isMobile ? (
+          <div className="mt-3 relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input type="text" value={searchQuery} onChange={(e) => onSearch(e.target.value)}
+              placeholder="Search in folder…"
+              className="w-full h-9 pl-9 pr-8 text-[13px] text-white bg-gray-900/40 border border-gray-800/50 rounded-lg outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 placeholder-gray-600" />
+            {searchQuery && (
+              <button onClick={() => onSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-300 touch-manipulation">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        ) : (
           <div className="mt-4 relative max-w-sm">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600" fill="none"
               viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -1,5 +1,4 @@
 // src/services/dashboard.service.js
-
 import apiService from '../utils/api';
 import { config } from '../config/config';
 
@@ -46,8 +45,13 @@ class DashboardService {
           pinnedLinks,
           starredLinks: starred.starred_links || [],
           collections: (home.folders || []).map(f => ({
-            id: f.id, name: f.name, icon: f.icon || '📁',
-            color: f.color, count: f.link_count ?? f.count ?? 0, pinned: f.pinned,
+            id: f.id,
+            name: f.name,
+            slug: f.slug,
+            icon: f.icon || '📁',
+            color: f.color,
+            count: f.link_count ?? f.count ?? 0,
+            pinned: f.pinned,
           })),
           activities: home.activities || [],
           quickAccess,

@@ -1,5 +1,4 @@
 // src/hooks/useOverview.js
-
 import { useCallback, useMemo } from 'react';
 import { useCachedData, KEYS, STALE_TIMES } from '../cache';
 import DashboardService from '../services/dashboard.service';
@@ -30,9 +29,13 @@ export function useOverview() {
   const folders = useMemo(() => {
     if (!data?.folders) return [];
     return data.folders.map(f => ({
-      id: f.id, name: f.name,
-      emoji: f.icon || '📁', icon: f.icon,
-      color: f.color, pinned: f.pinned || false,
+      id: f.id,
+      name: f.name,
+      slug: f.slug,
+      emoji: f.icon || '📁',
+      icon: f.icon,
+      color: f.color,
+      pinned: f.pinned || false,
       parent_id: f.parent_id,
       link_count: f.link_count ?? 0,
       position: f.position,
