@@ -87,6 +87,22 @@ def _log_startup_banner(app):
     logger.info("  ✓ Ready to accept connections")
     logger.info("")
 
+def _init_extensions(app):
+    db.init_app(app)
+    migrate.init_app(app, db)
+    db_manager.init_app(app)
+
+    cors_origins = app.config.get('CORS_ORIGINS', [])
+    logger.info("[CORS] Allowed origins: %d configured", len(cors_origins))
+
+    CORS(app,
+         origins=cors_origins,
+         supports_credentials=True,
+         allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+         expose_headers=['Content-Type', 'Authorization'],
+         max_age=86400)
+
 
 def _register_hooks(app):
     @app.before_request
