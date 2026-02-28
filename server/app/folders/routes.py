@@ -1,4 +1,5 @@
 # server/app/folders/routes.py
+
 from flask import request
 from app.folders import folders_bp
 from app.auth.middleware import require_auth
@@ -27,6 +28,25 @@ def list_all():
         return success_response({'folders': service.get_folder_tree(uid())})
     folders = service.get_user_folders(uid())
     return success_response({'folders': [service.serialize_folder(f, counts=True) for f in folders]})
+
+@folders_bp.route('/root', methods=['GET'])
+@require_auth
+def get_root():
+    try:
+        limit = min(max(1, int(request.args.get('limit', 30))), 100)
+    except ValueError:
+        limit = 30
+    params = {
+        'search': request.args.get('search', ''),
+        'sort': request.args.get('sort', 'created_at'),
+        'order': request.args.get('order', 'desc'),
+        'cursor': request.args.get('cursor'),
+        'limit': limit,
+        'type_filter': request.args.get('type', ''),
+        'tag_ids': request.args.get('tag_ids', ''),
+    }
+    data = service.get_root_items(uid(), params)
+    return success_response(data)
 
 
 @folders_bp.route('/<int:folder_id>', methods=['GET'])
