@@ -61,11 +61,6 @@ INDEXES = [
     ("""CREATE INDEX IF NOT EXISTS ix_link_tags_link_tag
         ON link_tags (link_id, tag_id)""",
      "link-tag pair lookup"),
-
-    ("""CREATE INDEX IF NOT EXISTS ix_activity_cleanup
-        ON activity_logs (user_id, created_at)
-        WHERE created_at < NOW() - INTERVAL '90 days'""",
-     "activity cleanup"),
 ]
 
 DROP_LIST = [
@@ -78,7 +73,6 @@ DROP_LIST = [
     "ix_links_folder_title",
     "ix_links_user_stats",
     "ix_link_tags_link_tag",
-    "ix_activity_cleanup",
 ]
 
 
@@ -87,7 +81,7 @@ class ScalabilityIndexesMigration(Migration):
         super().__init__(
             version='005_scalability_indexes',
             description='Add batch count, folder listing, unassigned, '
-                        'stats aggregate, and unique slug indexes for 1000+ user scale'
+                        'stats aggregate, and unique slug indexes for scale'
         )
 
     def validate(self) -> bool:
@@ -126,12 +120,10 @@ class ScalabilityIndexesMigration(Migration):
                     skipped += 1
                     logger.info("  ⏭ %s (already exists)", name)
                 elif 'include' in err_str and 'syntax' in err_str:
-                    fallback = sql.replace('INCLUDE', '-- INCLUDE')
                     try:
-                        db.session.execute(text(
-                            sql.split('INCLUDE')[0] + sql.split(')')[
-                                -1] if 'INCLUDE' in sql else sql
-                        ))
+                        fallback_sql = sql.split('INCLUDE')[0].rstrip() + \
+                                       sql.split(')')[-1] if 'INCLUDE' in sql else sql
+                        db.session.execute(text(fallback_sql))
                         db.session.commit()
                         created += 1
                         logger.info("  ✓ %s (without INCLUDE)", name)

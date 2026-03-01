@@ -3,16 +3,13 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-/*  Exported constant so other components (FAB, content area)
-      can offset themselves above the nav  */
-export const BOTTOM_NAV_HEIGHT = 56; // Tailwind h-14
+export const BOTTOM_NAV_HEIGHT = 56;
 
 export default function MobileBottomNav() {
     const location = useLocation();
     const navigate = useNavigate();
     const [isMobile, setIsMobile] = useState(false);
 
-    //  Only render on mobile 
     useEffect(() => {
         const check = () => setIsMobile(window.innerWidth < 768);
         check();
@@ -20,14 +17,12 @@ export default function MobileBottomNav() {
         return () => window.removeEventListener('resize', check);
     }, []);
 
-    //  Haptic feedback (Android / supported browsers) 
     const haptic = useCallback(() => {
         try {
             navigator?.vibrate?.(4);
-        } catch { /* silent */ }
+        } catch { }
     }, []);
 
-    //  Nav items 
     const navItems = useMemo(() => [
         {
             id: 'home',
@@ -51,6 +46,42 @@ export default function MobileBottomNav() {
                            1.125-1.125h2.25c.621 0 1.125.504 1.125
                            1.125V21h4.125c.621 0 1.125-.504
                            1.125-1.125V9.75M8.25 21h8.25" />
+                </svg>
+            ),
+        },
+        {
+            id: 'all-links',
+            label: 'All Links',
+            path: '/dashboard/links/all',
+            activeIcon: (
+                <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="currentColor">
+                    <path fillRule="evenodd"
+                        d="M19.902 4.098a3.75 3.75 0 00-5.304 0l-4.5
+                           4.5a3.75 3.75 0 001.035
+                           6.037.75.75 0
+                           01-.646 1.353 5.25 5.25 0
+                           01-1.449-8.45l4.5-4.5a5.25 5.25 0
+                           117.424 7.424l-1.757 1.757a.75.75 0
+                           11-1.06-1.06l1.757-1.758a3.75 3.75 0
+                           000-5.304zm-7.389 4.267a.75.75 0
+                           011-.353 5.25 5.25 0
+                           011.449 8.45l-4.5 4.5a5.25 5.25 0
+                           11-7.424-7.424l1.757-1.757a.75.75 0
+                           111.06 1.06l-1.757 1.758a3.75 3.75 0
+                           105.304 5.304l4.5-4.5a3.75 3.75 0
+                           00-1.035-6.037.75.75 0 01-.354-1z"
+                        clipRule="evenodd" />
+                </svg>
+            ),
+            inactiveIcon: (
+                <svg className="w-[22px] h-[22px]" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                        d="M13.19 8.688a4.5 4.5 0 011.242
+                           7.244l-4.5 4.5a4.5 4.5 0
+                           01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5
+                           4.5 0 00-6.364-6.364l-4.5 4.5a4.5
+                           4.5 0 001.242 7.244" />
                 </svg>
             ),
         },
@@ -89,44 +120,8 @@ export default function MobileBottomNav() {
             ),
         },
         {
-            id: 'short',
-            label: 'Short',
-            path: '/dashboard/links/shortened',
-            activeIcon: (
-                <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="currentColor">
-                    <path fillRule="evenodd"
-                        d="M19.902 4.098a3.75 3.75 0 00-5.304 0l-4.5
-                           4.5a3.75 3.75 0 001.035
-                           6.037.75.75 0
-                           01-.646 1.353 5.25 5.25 0
-                           01-1.449-8.45l4.5-4.5a5.25 5.25 0
-                           117.424 7.424l-1.757 1.757a.75.75 0
-                           11-1.06-1.06l1.757-1.758a3.75 3.75 0
-                           000-5.304zm-7.389 4.267a.75.75 0
-                           011-.353 5.25 5.25 0
-                           011.449 8.45l-4.5 4.5a5.25 5.25 0
-                           11-7.424-7.424l1.757-1.757a.75.75 0
-                           111.06 1.06l-1.757 1.758a3.75 3.75 0
-                           105.304 5.304l4.5-4.5a3.75 3.75 0
-                           00-1.035-6.037.75.75 0 01-.354-1z"
-                        clipRule="evenodd" />
-                </svg>
-            ),
-            inactiveIcon: (
-                <svg className="w-[22px] h-[22px]" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round"
-                        d="M13.19 8.688a4.5 4.5 0 011.242
-                           7.244l-4.5 4.5a4.5 4.5 0
-                           01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5
-                           4.5 0 00-6.364-6.364l-4.5 4.5a4.5
-                           4.5 0 001.242 7.244" />
-                </svg>
-            ),
-        },
-        {
             id: 'files',
-            label: 'Files',
+            label: 'My Files',
             path: '/dashboard/myfiles',
             activeIcon: (
                 <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="currentColor">
@@ -156,16 +151,15 @@ export default function MobileBottomNav() {
         },
     ], []);
 
-    //  Active-state matcher 
     const isActive = useCallback((item) => {
         const p = location.pathname;
         switch (item.id) {
             case 'home':
                 return p === '/dashboard' || p === '/dashboard/' || p === '/dashboard/home';
+            case 'all-links':
+                return p.includes('/links/all');
             case 'starred':
                 return p.includes('/links/starred');
-            case 'short':
-                return p.includes('/links/shortened');
             case 'files':
                 return p.includes('/myfiles');
             default:
@@ -181,7 +175,6 @@ export default function MobileBottomNav() {
             role="tablist"
             aria-label="Main navigation"
         >
-            {/*  Glassmorphism background  */}
             <div
                 className="absolute inset-0 border-t border-white/[0.04]"
                 style={{
@@ -191,7 +184,6 @@ export default function MobileBottomNav() {
                 }}
             />
 
-            {/*  Items row  */}
             <div
                 className="relative flex items-stretch"
                 style={{
@@ -225,24 +217,6 @@ export default function MobileBottomNav() {
                             aria-selected={active}
                             aria-label={item.label}
                         >
-                            {/*  Top indicator bar  */}
-                            {active && (
-                                <motion.div
-                                    layoutId="mobileNavIndicator"
-                                    className="absolute top-0 left-4 right-4 h-[2.5px] rounded-full"
-                                    style={{
-                                        background: 'var(--color-primary, #6366f1)',
-                                    }}
-                                    transition={{
-                                        type: 'spring',
-                                        stiffness: 420,
-                                        damping: 32,
-                                        mass: 0.8,
-                                    }}
-                                />
-                            )}
-
-                            {/*  Icon  */}
                             <motion.div
                                 animate={{
                                     scale: active ? 1.05 : 1,
@@ -255,7 +229,6 @@ export default function MobileBottomNav() {
                                 {active ? item.activeIcon : item.inactiveIcon}
                             </motion.div>
 
-                            {/*  Label  */}
                             <span
                                 className={`
                                     text-[10px] leading-none font-medium
@@ -266,7 +239,6 @@ export default function MobileBottomNav() {
                                 {item.label}
                             </span>
 
-                            {/*  Badge (optional)  */}
                             {item.badge != null && item.badge > 0 && (
                                 <span
                                     className="absolute top-[5px] left-1/2 ml-[7px]

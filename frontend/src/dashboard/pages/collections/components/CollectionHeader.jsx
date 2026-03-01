@@ -2,12 +2,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import FoldersService from '../../../services/folders.service';
+import FoldersService from '../../../../services/folders.service';
 import {
   IconChevronLeft, IconChevronRight, IconSearch, IconClose,
   IconDotsVertical, IconFolderPlus, IconPencil, IconPin,
   IconLink, IconInfo, IconTrash,
-} from '../../components/common/Icons';
+} from '../../../components/common/Icons';
 import toast from 'react-hot-toast';
 
 function displayIcon(icon) {

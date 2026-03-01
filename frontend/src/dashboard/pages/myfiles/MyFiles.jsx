@@ -4,11 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { ContextMenuProvider } from '../../components/common/ContextMenu';
 import { useMyFiles } from './useMyFiles';
-import MyFilesHeader from './MyFilesHeader';
-import MyFilesToolbar from './MyFilesToolbar';
-import MyFilesEmpty from './MyFilesEmpty';
+import MyFilesHeader from '../myfiles/components/MyFilesHeader';
+import MyFilesToolbar from '../myfiles/components/MyFilesToolbar';
+import MyFilesEmpty from '../myfiles/components/MyFilesEmpty';
 import MobileSelectionBar from '../../components/mobile/MobileSelectionBar';
-import FolderTreePanel from './FolderTreePanel';
+import FolderTreePanel from '../myfiles/components/FolderTreePanel';
 import FolderCard from '../../components/folders/FolderCard';
 import FolderPropertiesModal from '../../modals/FolderProperties/FolderPropertiesModal';
 import LinkCard from '../../components/links/LinkCard';
@@ -24,19 +24,35 @@ function haptic(ms = 50) {
   try { navigator?.vibrate?.(ms); } catch {}
 }
 
-export default function MyFiles({ onAddLink, onCreateFolder }) {
+export default function MyFiles({ 
+  searchQuery: externalSearchQuery,
+  onSearch: externalOnSearch,
+  viewMode: externalViewMode,
+  onViewModeChange: externalOnViewModeChange,
+  onAddLink, 
+  onCreateFolder 
+}) {
   const navigate = useNavigate();
   const {
     folders, links, meta, stats, loading, linksLoading,
-    searchQuery, setSearchQuery, sortBy, setSortBy, sortOrder, setSortOrder,
+    searchQuery: localSearchQuery, setSearchQuery: setLocalSearchQuery,
+    sortBy, setSortBy, sortOrder, setSortOrder,
     typeFilter, setTypeFilter, tagFilter, setTagFilter,
     loadMore, refresh, updateLink, deleteLink, pinLink, starLink, archiveLink,
     bulkDelete, bulkArchive, bulkMove,
   } = useMyFiles();
-
-  const [viewMode, setViewMode] = useState(() => {
+  const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : localSearchQuery;
+  const setSearchQuery = externalOnSearch || setLocalSearchQuery;
+  const [localViewMode, setLocalViewMode] = useState(() => {
     try { return localStorage.getItem('savlink_myfiles_view') || 'list'; } catch { return 'list'; }
   });
+
+  const viewMode = externalViewMode !== undefined ? externalViewMode : localViewMode;
+  const handleViewModeChange = externalOnViewModeChange || ((mode) => {
+    setLocalViewMode(mode);
+    try { localStorage.setItem('savlink_myfiles_view', mode); } catch {}
+  });
+
   const [treeOpen, setTreeOpen] = useState(() => {
     try { return localStorage.getItem('savlink_tree_open') !== 'false'; } catch { return true; }
   });
@@ -62,11 +78,6 @@ export default function MyFiles({ onAddLink, onCreateFolder }) {
   useEffect(() => {
     if (isMobile && mobileSelectMode && selectedIds.size === 0) setMobileSelectMode(false);
   }, [isMobile, mobileSelectMode, selectedIds.size]);
-
-  const handleViewModeChange = useCallback((mode) => {
-    setViewMode(mode);
-    try { localStorage.setItem('savlink_myfiles_view', mode); } catch {}
-  }, []);
 
   const handleToggleTree = useCallback(() => {
     setTreeOpen(prev => {
@@ -373,13 +384,23 @@ export default function MyFiles({ onAddLink, onCreateFolder }) {
           </AnimatePresence>
 
           <MyFilesHeader
-            stats={stats} searchQuery={searchQuery} onSearch={setSearchQuery}
-            sortBy={sortBy} sortOrder={sortOrder} onSortChange={handleSortChange}
-            typeFilter={typeFilter} onTypeChange={setTypeFilter}
-            tagFilter={tagFilter} onTagChange={setTagFilter}
-            viewMode={viewMode} onViewModeChange={handleViewModeChange}
-            onAddLink={onAddLink} onCreateFolder={() => onCreateFolder?.()}
-            onToggleTree={handleToggleTree} treeOpen={treeOpen} isMobile={isMobile}
+            stats={stats} 
+            searchQuery={searchQuery} 
+            onSearch={setSearchQuery}
+            sortBy={sortBy} 
+            sortOrder={sortOrder} 
+            onSortChange={handleSortChange}
+            typeFilter={typeFilter} 
+            onTypeChange={setTypeFilter}
+            tagFilter={tagFilter} 
+            onTagChange={setTagFilter}
+            viewMode={viewMode} 
+            onViewModeChange={handleViewModeChange}
+            onAddLink={onAddLink} 
+            onCreateFolder={() => onCreateFolder?.()}
+            onToggleTree={handleToggleTree} 
+            treeOpen={treeOpen} 
+            isMobile={isMobile}
           />
 
           {!isMobile && (

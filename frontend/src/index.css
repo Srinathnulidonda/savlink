@@ -25,7 +25,6 @@
   body {
     @apply bg-black text-white;
     overflow-x: hidden;
-    /* Prevent horizontal scroll on mobile */
   }
 
   ::selection {
@@ -35,7 +34,6 @@
 
 @layer components {
 
-  /* Buttons */
   .btn {
     @apply relative inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-200 disabled:pointer-events-none disabled:opacity-40;
   }
@@ -52,27 +50,22 @@
     @apply btn px-4 py-2 text-sm text-gray-400 hover:bg-gray-900 hover:text-white;
   }
 
-  /* Cards */
   .card {
     @apply rounded-xl border border-gray-900 bg-gray-950/50 backdrop-blur-sm;
   }
 
-  /* Text Gradient */
   .text-gradient {
     @apply bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent;
   }
 
-  /* Glass Effect */
   .glass {
     @apply bg-gray-950/30 backdrop-blur-md;
   }
 
-  /* Glow Line */
   .glow-line {
     @apply absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent;
   }
 
-  /* Mobile FAB Styles */
   .mobile-fab {
     user-select: none;
     -webkit-user-select: none;
@@ -83,7 +76,6 @@
 
 @layer utilities {
 
-  /* Hide Scrollbar */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -93,17 +85,14 @@
     display: none;
   }
 
-  /* Text Balance for Better Typography */
   .text-balance {
     text-wrap: balance;
   }
 
-  /* Subtle Grid Background */
   .bg-grid-subtle {
     background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.01'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }
 
-  /* Safe Area Support */
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
@@ -127,7 +116,6 @@
     padding-left: env(safe-area-inset-left);
   }
 
-  /* Animations */
   @keyframes pulse-scale {
 
     0%,
@@ -145,17 +133,13 @@
   }
 }
 
-/* Safe area support for devices with notches and gesture navigation */
 @supports (padding: env(safe-area-inset-bottom)) {
   .mobile-fab-safe {
-    /* Safe area styles will be applied automatically by the component */
   }
 }
 
-/* Enhanced mobile support */
 @media screen and (max-width: 768px) {
 
-  /* Prevent zoom on input focus for iOS */
   input[type="text"],
   input[type="email"],
   input[type="url"],
@@ -165,7 +149,6 @@
     font-size: 16px;
   }
 
-  /* Better touch targets */
   button,
   .btn,
   [role="button"] {
@@ -173,7 +156,6 @@
     min-width: 44px;
   }
 
-  /* Custom scrollbar for mobile webkit browsers */
   ::-webkit-scrollbar {
     width: 3px;
   }
@@ -192,7 +174,6 @@
   }
 }
 
-/* Accessibility: Reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
 
   .mobile-fab,
@@ -208,23 +189,19 @@
   }
 }
 
-/* High contrast mode support */
 @media (prefers-contrast: high) {
   .mobile-fab {
     border: 2px solid currentColor;
   }
 }
 
-/* Dark mode enhancements (since your app is dark by default) */
 @media (prefers-color-scheme: dark) {
 
-  /* Additional dark mode specific styles if needed */
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.3);
   }
 }
 
-/* Print styles */
 @media print {
 
   .mobile-fab,
@@ -234,14 +211,12 @@
   }
 }
 
-/* Focus visible for better keyboard navigation */
 .btn:focus-visible,
 .mobile-fab:focus-visible {
   outline: 2px solid rgb(var(--primary));
   outline-offset: 2px;
 }
 
-/* Loading states */
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -252,7 +227,6 @@
   animation: spin 2s linear infinite;
 }
 
-/* Mobile-specific button adjustments */
 @media screen and (max-width: 640px) {
 
   .btn-primary,
@@ -261,13 +235,11 @@
   }
 }
 
-/* src/index.css - Add mobile utilities */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  /* Mobile-first responsive breakpoints */
   .xs\:grid-cols-2 {
     @media (min-width: 475px) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -276,7 +248,6 @@
 }
 
 @layer utilities {
-  /* Safe area support for mobile devices */
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }
@@ -293,20 +264,17 @@
     padding-right: env(safe-area-inset-right);
   }
 
-  /* Touch-friendly spacing */
   .touch-target {
     min-height: 44px;
     min-width: 44px;
   }
 
-  /* Better mobile scrolling */
   .mobile-scroll {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
   }
 }
 
-/* Custom scrollbar for mobile */
 @media (max-width: 768px) {
   ::-webkit-scrollbar {
     width: 4px;
@@ -321,8 +289,6 @@
     border-radius: 2px;
   }
 }
-
-/* frontend/src/index.css — append these rules */
 
 :root {
   --sat: env(safe-area-inset-top, 0px);
@@ -364,4 +330,13 @@ body {
     padding-right: max(1.25rem, var(--sar));
   }
   .touch-target { min-height: 44px; min-width: 44px; }
+}
+
+
+@font-face {
+  font-family: 'Savlink';
+  src: url('/src/font/savlink-reg.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }

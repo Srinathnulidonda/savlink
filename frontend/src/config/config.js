@@ -4,7 +4,7 @@ export const config = {
     apiBaseUrl: import.meta.env.VITE_API_URL,
 
     appName: 'Savlink',
-    appVersion: '.001',
+    appVersion: '0.5.0',
 
     features: {
         googleAuth: true,

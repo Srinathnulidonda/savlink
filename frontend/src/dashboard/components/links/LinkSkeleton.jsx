@@ -6,23 +6,20 @@ function Pulse({ className = '' }) {
     return <div className={`animate-pulse bg-white/[0.04] rounded ${className}`} />;
 }
 
-// ── Dimension constants matching real card / row output ──────
-const LIST_ROW_HEIGHT = 53;      // 52px row + 1px gap
-const GRID_CARD_ESTIMATE = 210;  // approximate rendered card + gap
-const GRID_GAP = 12;             // gap-3
+const LIST_ROW_HEIGHT = 53;
+const GRID_CARD_ESTIMATE = 210;
+const GRID_GAP = 12;
 const MIN_FILL = 300;
 
-// Viewport-based columns (mirrors Tailwind breakpoints)
 function getGridColumns() {
     if (typeof window === 'undefined') return 1;
     const w = window.innerWidth;
-    if (w >= 1280) return 4;  // xl:grid-cols-4
-    if (w >= 1024) return 3;  // lg:grid-cols-3
-    if (w >= 640)  return 2;  // sm:grid-cols-2
+    if (w >= 1280) return 4;
+    if (w >= 1024) return 3;
+    if (w >= 640)  return 2;
     return 1;
 }
 
-// Walk up to the nearest scrollable ancestor
 function findScrollParent(el) {
     let node = el?.parentElement;
     while (node && node !== document.documentElement) {
@@ -33,11 +30,9 @@ function findScrollParent(el) {
     return document.documentElement;
 }
 
-// ─────────────────────────────────────────────────────────────
 export default function LinkSkeleton({ viewMode = 'grid' }) {
     const containerRef = useRef(null);
 
-    // Viewport-based seed so the first paint is never blank
     const [count, setCount] = useState(() => {
         if (typeof window === 'undefined') return 12;
         const h = window.innerHeight;
@@ -46,7 +41,6 @@ export default function LinkSkeleton({ viewMode = 'grid' }) {
         return Math.ceil(h / GRID_CARD_ESTIMATE) * cols;
     });
 
-    // ── Core measurement ────────────────────────────────────
     const measure = useCallback(() => {
         const el = containerRef.current;
         if (!el) return;
@@ -70,16 +64,14 @@ export default function LinkSkeleton({ viewMode = 'grid' }) {
                 ? firstCard.getBoundingClientRect().height + GRID_GAP
                 : GRID_CARD_ESTIMATE;
             const rows = Math.ceil(fillH / cardH);
-            setCount(rows * cols);          // ← always a full row
+            setCount(rows * cols);
         }
     }, [viewMode]);
 
-    // Run before the browser paints → no flash / reflow jump
     useLayoutEffect(() => {
         measure();
     }, [measure]);
 
-    // Re-measure when the scroll container or skeleton resizes
     useEffect(() => {
         const el = containerRef.current;
         if (!el) return;
@@ -93,7 +85,6 @@ export default function LinkSkeleton({ viewMode = 'grid' }) {
         return () => ro.disconnect();
     }, [measure]);
 
-    // ── Render ──────────────────────────────────────────────
     const items = Array.from({ length: count });
 
     if (viewMode === 'list') {
@@ -136,7 +127,6 @@ export default function LinkSkeleton({ viewMode = 'grid' }) {
         >
             {items.map((_, i) => (
                 <div key={i} className="rounded-xl border border-white/[0.04] p-4">
-                    {/* Header */}
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2.5">
                             <Pulse className="w-9 h-9 rounded-lg" />
@@ -150,7 +140,6 @@ export default function LinkSkeleton({ viewMode = 'grid' }) {
                         <Pulse className="w-7 h-7 rounded-md" />
                     </div>
 
-                    {/* Title */}
                     <div className="space-y-1.5 mb-2">
                         <Pulse
                             className={`h-4 rounded ${
@@ -170,14 +159,12 @@ export default function LinkSkeleton({ viewMode = 'grid' }) {
                         )}
                     </div>
 
-                    {/* URL */}
                     <Pulse
                         className={`h-2.5 rounded mb-1 ${
                             i % 2 === 0 ? 'w-[60%]' : 'w-[50%]'
                         }`}
                     />
 
-                    {/* Notes (some cards) */}
                     {i % 5 === 0 && (
                         <div className="mt-2.5 space-y-1">
                             <Pulse className="h-3 w-full rounded" />
@@ -185,7 +172,6 @@ export default function LinkSkeleton({ viewMode = 'grid' }) {
                         </div>
                     )}
 
-                    {/* Footer */}
                     <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/[0.03]">
                         <div className="flex gap-1.5">
                             <Pulse className="h-[22px] w-12 rounded-md" />

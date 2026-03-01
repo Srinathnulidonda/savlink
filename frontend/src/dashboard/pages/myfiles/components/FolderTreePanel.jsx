@@ -2,8 +2,8 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useOverview } from '../../../hooks/useOverview';
-import FoldersService from '../../../services/folders.service';
+import { useOverview } from '../../../../hooks/useOverview';
+import FoldersService from '../../../../services/folders.service';
 
 function displayIcon(icon) {
   if (!icon) return '📁';

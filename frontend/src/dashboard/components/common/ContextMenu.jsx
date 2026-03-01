@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ── Context for nested menus ────────────────────────────────
 const ContextMenuContext = createContext({
     closeAll: () => {},
 });
@@ -12,7 +11,6 @@ export function useContextMenu() {
     return useContext(ContextMenuContext);
 }
 
-// ── Provider — wraps any area that needs right-click ────────
 export function ContextMenuProvider({ children }) {
     const [menu, setMenu] = useState(null);
 
@@ -23,7 +21,6 @@ export function ContextMenuProvider({ children }) {
         const x = e.clientX;
         const y = e.clientY;
 
-        // Calculate position to keep menu in viewport
         const menuWidth = 220;
         const menuHeight = items.length * 36 + 20;
         const adjustedX = x + menuWidth > window.innerWidth ? x - menuWidth : x;
@@ -41,7 +38,6 @@ export function ContextMenuProvider({ children }) {
         setMenu(null);
     }, []);
 
-    // Close on scroll
     useEffect(() => {
         if (!menu) return;
         const handler = () => close();
@@ -53,7 +49,6 @@ export function ContextMenuProvider({ children }) {
         };
     }, [menu, close]);
 
-    // Close on Escape
     useEffect(() => {
         if (!menu) return;
         const handler = (e) => {
@@ -81,16 +76,12 @@ export function ContextMenuProvider({ children }) {
     );
 }
 
-// ── Menu Overlay ────────────────────────────────────────────
-
 function ContextMenuOverlay({ x, y, items, onClose }) {
     const menuRef = useRef(null);
     const [focusedIndex, setFocusedIndex] = useState(-1);
 
-    // Get only actionable items (skip dividers)
     const actionableItems = items.filter(i => !i.type);
 
-    // Keyboard navigation
     useEffect(() => {
         const handler = (e) => {
             switch (e.key) {
@@ -126,14 +117,12 @@ function ContextMenuOverlay({ x, y, items, onClose }) {
 
     return (
         <>
-            {/* Backdrop */}
             <div
                 className="fixed inset-0 z-[60]"
                 onClick={onClose}
                 onContextMenu={(e) => { e.preventDefault(); onClose(); }}
             />
 
-            {/* Menu */}
             <motion.div
                 ref={menuRef}
                 initial={{ opacity: 0, scale: 0.92 }}

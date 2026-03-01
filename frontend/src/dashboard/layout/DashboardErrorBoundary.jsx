@@ -26,9 +26,7 @@ class DashboardErrorBoundary extends React.Component {
             errorInfo: errorInfo
         });
 
-        // Log to error reporting service in production
         if (process.env.NODE_ENV === 'production') {
-            // Example: Sentry.captureException(error, { extra: errorInfo });
         }
     }
 

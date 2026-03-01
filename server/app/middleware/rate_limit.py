@@ -114,19 +114,8 @@ def _check_local(key, max_requests, window_seconds, now):
         return True, max_requests - 1, now + window_seconds
 
 
-# ═══ Pre-built rate limiters for common patterns ═══
-
-# General API: 120 requests/minute
 api_limiter = rate_limit(max_requests=120, window_seconds=60, key_prefix='rl:api')
-
-# Write operations: 30/minute
 write_limiter = rate_limit(max_requests=30, window_seconds=60, key_prefix='rl:write')
-
-# Auth endpoints: 10/minute
 auth_limiter = rate_limit(max_requests=10, window_seconds=60, key_prefix='rl:auth')
-
-# Search: 30/minute
 search_limiter = rate_limit(max_requests=30, window_seconds=60, key_prefix='rl:search')
-
-# Metadata extraction: 20/minute
 metadata_limiter = rate_limit(max_requests=20, window_seconds=60, key_prefix='rl:meta')

@@ -7,7 +7,6 @@ import { invalidateFolders } from '../cache';
 
 const BASE = config.endpoints.links.collections;
 
-// ═══ Prefetch state (prevents duplicate prefetches) ═══
 const _prefetching = new Set();
 
 class FoldersService {
@@ -43,7 +42,6 @@ class FoldersService {
     return { success: false, error: response.error || 'Folder not found' };
   }
 
-  // ═══ NEW: Combined folder + links in one call ═══
   async getFolderFull(slug, params = {}) {
     const response = await apiService.get(
       `${BASE}/s/${encodeURIComponent(slug)}/full`,
@@ -55,12 +53,10 @@ class FoldersService {
     return { success: false, error: response.error || 'Folder not found' };
   }
 
-  // ═══ NEW: Prefetch folder data on hover ═══
   prefetchFolder(slug) {
     if (!slug) return;
     const cacheKey = KEYS.FOLDER_DETAIL + slug;
 
-    // Skip if already cached and fresh, or already prefetching
     if (_prefetching.has(slug)) return;
     if (cache.has(cacheKey) && !cache.isStale(cacheKey, STALE_TIMES.FOLDER_DETAIL)) return;
 
@@ -76,7 +72,6 @@ class FoldersService {
             parent: result.data.parent,
             stats: result.data.stats,
           });
-          // Cache links too
           const lk = KEYS.FOLDER_LINKS + `${slug}:title:asc:`;
           cache.set(lk, {
             links: result.data.links || [],

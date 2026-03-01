@@ -418,7 +418,6 @@ def update_link_tags(user_id: str, link_id: int, add_ids: List[int], remove_ids:
 
 
 #  Expiration 
-
 def get_expiring_links(user_id: str, days_ahead: int = 7) -> List[Link]:
     cutoff = datetime.utcnow() + timedelta(days=days_ahead)
     return Link.query.filter(

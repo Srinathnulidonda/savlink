@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { ContextMenuProvider } from '../../components/common/ContextMenu';
 import { useCollection } from './useCollection';
-import CollectionHeader from './CollectionHeader';
-import CollectionEmpty from './CollectionEmpty';
+import CollectionHeader from '../collections/components/CollectionHeader';
+import CollectionEmpty from '../collections/components/CollectionEmpty';
 import MobileFilesToolbar from '../../components/mobile/MobileFilesToolbar';
 import MobileSelectionBar from '../../components/mobile/MobileSelectionBar';
 import FolderCard from '../../components/folders/FolderCard';
@@ -32,7 +32,12 @@ const COLLECTION_SORT_FIELDS = [
   { id: 'click_count', label: 'Most clicked', defaultOrder: 'desc' },
 ];
 
-export default function CollectionView({ onAddLink, onCreateFolder }) {
+export default function CollectionView({ 
+  onAddLink, 
+  onCreateFolder,
+  viewMode: externalViewMode,
+  onViewModeChange: externalOnViewModeChange,
+}) {
   const navigate = useNavigate();
   const {
     folderId, folder, children, breadcrumb, stats,
@@ -41,13 +46,15 @@ export default function CollectionView({ onAddLink, onCreateFolder }) {
     loadMore, refresh, updateLink, deleteLink, pinLink, starLink, archiveLink,
   } = useCollection();
 
-  const [viewMode, setViewMode] = useState(() => {
+  const [localViewMode, setLocalViewMode] = useState(() => {
     try { return localStorage.getItem('savlink_collection_view') || 'list'; } catch { return 'list'; }
   });
-  const handleViewModeChange = useCallback((mode) => {
-    setViewMode(mode);
+
+  const viewMode = externalViewMode !== undefined ? externalViewMode : localViewMode;
+  const handleViewModeChange = externalOnViewModeChange || ((mode) => {
+    setLocalViewMode(mode);
     try { localStorage.setItem('savlink_collection_view', mode); } catch {}
-  }, []);
+  });
 
   const [selectedLink, setSelectedLink] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());

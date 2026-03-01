@@ -15,7 +15,6 @@ export default function MobileShell({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
 
-  // Detect if we're inside a folder (collection) view
   const isInFolderView = /^\/dashboard\/myfiles\/[^/]+/.test(location.pathname);
 
   useEffect(() => {
@@ -27,7 +26,6 @@ export default function MobileShell({
     <div className="flex h-[100dvh] bg-black overflow-hidden relative">
       <div className="flex-1 flex flex-col overflow-hidden">
         
-        {/* Only show global header when NOT in folder view */}
         {!isInFolderView && (
           <header
             className="flex-shrink-0 border-b border-gray-800/40 bg-[#0a0a0a]/95 relative z-30"
@@ -45,7 +43,6 @@ export default function MobileShell({
           </header>
         )}
 
-        {/* Content area — add top padding when in folder view for the folder header */}
         <div
           className="flex-1 overflow-y-auto bg-black overscroll-contain -webkit-overflow-scrolling-touch"
           style={{

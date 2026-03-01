@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthService } from '../../../auth/services/auth.service';
 
-// ── View label mapping ──────────────────────────────────────
 const VIEW_META = {
     home:       { label: 'Home' },
     myfiles:    { label: 'My Files' },
@@ -17,7 +16,6 @@ const VIEW_META = {
     settings:   { label: 'Settings' },
 };
 
-// Pages that show the view toggle
 const VIEW_TOGGLE_PAGES = ['all', 'starred', 'recent', 'archive', 'myfiles'];
 
 export default function HeaderDesktop({
@@ -39,7 +37,6 @@ export default function HeaderDesktop({
     const profileRef = useRef(null);
     const searchRef = useRef(null);
 
-    // ── Detect current view from URL ────────────────────────
     const getCurrentView = useCallback(() => {
         const path = location.pathname;
         if (path.includes('/home') || path === '/dashboard' || path === '/dashboard/') return 'home';
@@ -57,7 +54,6 @@ export default function HeaderDesktop({
     const viewInfo = VIEW_META[currentView] || { label: 'Dashboard' };
     const showViewToggle = VIEW_TOGGLE_PAGES.includes(currentView);
 
-    // ── Close profile on outside click ──────────────────────
     useEffect(() => {
         if (!profileOpen) return;
         const handler = (e) => {
@@ -69,7 +65,6 @@ export default function HeaderDesktop({
         return () => document.removeEventListener('mousedown', handler);
     }, [profileOpen]);
 
-    // ── Close on Escape ─────────────────────────────────────
     useEffect(() => {
         if (!profileOpen) return;
         const handler = (e) => {
@@ -79,7 +74,6 @@ export default function HeaderDesktop({
         return () => window.removeEventListener('keydown', handler);
     }, [profileOpen]);
 
-    // ── "/" to focus search ─────────────────────────────────
     useEffect(() => {
         const handler = (e) => {
             if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
@@ -110,7 +104,6 @@ export default function HeaderDesktop({
     return (
         <div className="flex items-center h-14 px-6">
 
-            {/* ── Left: Page title ───────────────────────── */}
             <div className="flex items-center gap-2.5 flex-shrink-0 min-w-0">
                 <h1 className="text-[15px] font-semibold text-white truncate">
                     {viewInfo.label}
@@ -123,13 +116,10 @@ export default function HeaderDesktop({
                 )}
             </div>
 
-            {/* ── Spacer ─────────────────────────────────── */}
             <div className="flex-1 min-w-[40px]" />
 
-            {/* ── Right: Controls ────────────────────────── */}
             <div className="flex items-center">
 
-                {/* ── Search Bar ─────────────────────────── */}
                 <div className="relative">
                     <div
                         className={`flex items-center rounded-lg border transition-all duration-250 ease-out
@@ -138,7 +128,6 @@ export default function HeaderDesktop({
                                 : 'w-[260px] lg:w-[320px] xl:w-[380px] border-gray-800/40 bg-gray-900/30 hover:border-gray-700/40 hover:bg-gray-900/40'
                             }`}
                     >
-                        {/* Search icon */}
                         <div className="pl-3 pr-1 flex items-center">
                             <svg className={`h-4 w-4 transition-colors ${searchFocused ? 'text-gray-400' : 'text-gray-600'}`}
                                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -146,7 +135,6 @@ export default function HeaderDesktop({
                             </svg>
                         </div>
 
-                        {/* Input */}
                         <input
                             ref={searchRef}
                             type="text"
@@ -159,7 +147,6 @@ export default function HeaderDesktop({
                                        outline-none py-2 pr-2 min-w-0"
                         />
 
-                        {/* Clear / Shortcut */}
                         <div className="pr-2.5 flex items-center">
                             {searchQuery ? (
                                 <button
@@ -184,10 +171,8 @@ export default function HeaderDesktop({
                     </div>
                 </div>
 
-                {/* ── Divider ────────────────────────────── */}
                 {showViewToggle && <HeaderDivider className="mx-4" />}
 
-                {/* ── View Toggle ─────────────────────────── */}
                 {showViewToggle && (
                     <ViewToggle
                         viewMode={viewMode}
@@ -195,10 +180,8 @@ export default function HeaderDesktop({
                     />
                 )}
 
-                {/* ── Divider ────────────────────────────── */}
                 <HeaderDivider className="mx-4" />
 
-                {/* ── Add Link ───────────────────────────── */}
                 <motion.button
                     onClick={onAddLink}
                     whileTap={{ scale: 0.95 }}
@@ -213,10 +196,8 @@ export default function HeaderDesktop({
                     <span className="hidden lg:inline">New Link</span>
                 </motion.button>
 
-                {/* ── Divider ────────────────────────────── */}
                 <HeaderDivider className="mx-4" />
 
-                {/* ── User Profile ───────────────────────── */}
                 <div ref={profileRef} className="relative flex-shrink-0">
                     <button
                         onClick={() => setProfileOpen(!profileOpen)}
@@ -226,7 +207,6 @@ export default function HeaderDesktop({
                                 : 'hover:bg-white/[0.03]'
                             }`}
                     >
-                        {/* Avatar */}
                         <div className="relative">
                             {user?.avatar_url ? (
                                 <img
@@ -242,13 +222,11 @@ export default function HeaderDesktop({
                                     </span>
                                 </div>
                             )}
-                            {/* Status dot */}
                             <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full 
                                             border-[2px] border-[#0a0a0a]
                                             ${user?._syncedWithBackend ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                         </div>
 
-                        {/* Name */}
                         <div className="hidden xl:block text-left min-w-0">
                             <p className="text-[13px] font-medium text-gray-300 truncate max-w-[100px] leading-tight
                                           group-hover:text-white transition-colors">
@@ -259,7 +237,6 @@ export default function HeaderDesktop({
                             </p>
                         </div>
 
-                        {/* Chevron */}
                         <motion.svg
                             className="h-3 w-3 text-gray-600 hidden xl:block flex-shrink-0"
                             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
@@ -270,7 +247,6 @@ export default function HeaderDesktop({
                         </motion.svg>
                     </button>
 
-                    {/* ── Profile Dropdown ────────────────── */}
                     <AnimatePresence>
                         {profileOpen && (
                             <ProfileDropdown
@@ -294,9 +270,6 @@ export default function HeaderDesktop({
         </div>
     );
 }
-
-
-// ── View Toggle Component ───────────────────────────────────
 
 function ViewToggle({ viewMode, onViewModeChange }) {
     return (
@@ -341,7 +314,6 @@ function ViewToggleButton({ active, onClick, label, children }) {
             aria-checked={active}
             aria-label={label}
         >
-            {/* Active background */}
             {active && (
                 <motion.div
                     layoutId="viewToggleActive"
@@ -354,31 +326,20 @@ function ViewToggleButton({ active, onClick, label, children }) {
     );
 }
 
-
-// ── Header Divider ──────────────────────────────────────────
-
 function HeaderDivider({ className = '' }) {
     return (
         <div className={`w-px h-5 bg-gray-800/60 flex-shrink-0 ${className}`} />
     );
 }
 
-
-// ── Profile Dropdown ────────────────────────────────────────
-
 function ProfileDropdown({ user, stats, onClose, onLogout, onNavigate, onOpenCommandPalette }) {
     return (
         <>
-            {/* ── Full-screen click blocker ───────────────
-                 This sits above ALL content (links, cards, etc.)
-                 and prevents any interaction below the dropdown */}
             <div
                 className="fixed inset-0 z-[100]"
                 onClick={onClose}
             />
 
-            {/* ── Dropdown panel ──────────────────────────
-                 z-[110] ensures it's above the blocker */}
             <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: -4 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -390,10 +351,8 @@ function ProfileDropdown({ user, stats, onClose, onLogout, onNavigate, onOpenCom
                            shadow-[0_20px_60px_rgba(0,0,0,0.8),0_8px_24px_rgba(0,0,0,0.6)]
                            overflow-hidden"
             >
-                {/* User card */}
                 <div className="px-4 py-3.5 border-b border-gray-800/60 bg-[#111111]">
                     <div className="flex items-center gap-3">
-                        {/* Avatar */}
                         {user?.avatar_url ? (
                             <img
                                 src={user.avatar_url}
@@ -431,7 +390,6 @@ function ProfileDropdown({ user, stats, onClose, onLogout, onNavigate, onOpenCom
                     </div>
                 </div>
 
-                {/* Menu */}
                 <div className="p-1.5 bg-[#111111]">
                     <DropdownItem
                         icon={<SettingsIcon />}
@@ -451,7 +409,6 @@ function ProfileDropdown({ user, stats, onClose, onLogout, onNavigate, onOpenCom
                     />
                 </div>
 
-                {/* Logout */}
                 <div className="p-1.5 border-t border-gray-800/60 bg-[#111111]">
                     <DropdownItem
                         icon={<LogoutIcon />}
@@ -489,9 +446,6 @@ function DropdownItem({ icon, label, shortcut, onClick, danger = false }) {
         </button>
     );
 }
-
-
-// ── SVG Icons ───────────────────────────────────────────────
 
 function SettingsIcon() {
     return (

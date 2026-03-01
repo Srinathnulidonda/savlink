@@ -15,7 +15,6 @@ _local_ttls: dict = {}
 LOCAL_MAX = 200
 LOCAL_TTL = 3
 
-# ═══ Stampede lock tracking ═══
 _locks: dict = {}
 LOCK_TTL = 10
 

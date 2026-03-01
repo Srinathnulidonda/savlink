@@ -32,7 +32,7 @@ export default function MobileFilesToolbar({
   sortBy = 'title',
   sortOrder = 'asc',
   onSortChange,
-  viewMode,
+  viewMode = 'list',
   onViewModeChange,
   sortFields = DEFAULT_SORT_FIELDS,
 }) {
@@ -73,26 +73,31 @@ export default function MobileFilesToolbar({
     const field = sortFields.find(f => f.id === fieldId);
     const defaultOrder = field?.defaultOrder || 'asc';
     if (fieldId === sortBy) {
-      onSortChange(sortBy, sortOrder === 'desc' ? 'asc' : 'desc');
+      onSortChange?.(sortBy, sortOrder === 'desc' ? 'asc' : 'desc');
     } else {
-      onSortChange(fieldId, defaultOrder);
+      onSortChange?.(fieldId, defaultOrder);
     }
     setSortOpen(false);
   }, [sortBy, sortOrder, sortFields, onSortChange]);
 
   const handleDirectionSelect = useCallback((order) => {
     haptic();
-    onSortChange(sortBy, order);
+    onSortChange?.(sortBy, order);
     setSortOpen(false);
   }, [sortBy, onSortChange]);
 
+  const handleViewChange = useCallback((mode) => {
+    haptic();
+    if (onViewModeChange) {
+      onViewModeChange(mode);
+    }
+  }, [onViewModeChange]);
+
   return (
     <div className="relative flex-shrink-0">
-      {/* ═══ Toolbar ═══ */}
       <div className="flex items-center justify-between h-12 px-3
                       border-b border-white/[0.04]">
 
-        {/* Sort trigger */}
         <button
           ref={triggerRef}
           onClick={() => { haptic(); setSortOpen(prev => !prev); }}
@@ -120,11 +125,10 @@ export default function MobileFilesToolbar({
           </motion.svg>
         </button>
 
-        {/* View toggle — minimal */}
         <div className="flex items-center gap-px">
           <ViewBtn
             active={viewMode === 'list'}
-            onClick={() => { haptic(); onViewModeChange('list'); }}
+            onClick={() => handleViewChange('list')}
             label="List"
           >
             <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24"
@@ -135,7 +139,7 @@ export default function MobileFilesToolbar({
           </ViewBtn>
           <ViewBtn
             active={viewMode === 'grid'}
-            onClick={() => { haptic(); onViewModeChange('grid'); }}
+            onClick={() => handleViewChange('grid')}
             label="Grid"
           >
             <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24"
@@ -156,7 +160,6 @@ export default function MobileFilesToolbar({
         </div>
       </div>
 
-      {/* ═══ Sort Popup ═══ */}
       <AnimatePresence>
         {sortOpen && (
           <>
@@ -172,14 +175,12 @@ export default function MobileFilesToolbar({
                          border border-white/[0.08] bg-[#1c1c1e]
                          shadow-[0_8px_40px_rgba(0,0,0,0.55),0_2px_12px_rgba(0,0,0,0.3)]"
             >
-              {/* Header */}
               <div className="px-3 pt-2.5 pb-1">
                 <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
                   Sort by
                 </span>
               </div>
 
-              {/* Fields */}
               <div className="px-1 pb-0.5">
                 {sortFields.map((field) => {
                   const isActive = sortBy === field.id;
@@ -213,10 +214,8 @@ export default function MobileFilesToolbar({
                 })}
               </div>
 
-              {/* Divider */}
               <div className="mx-3 border-t border-white/[0.06]" />
 
-              {/* Direction */}
               <div className="px-1 py-1">
                 {(['asc', 'desc']).map((order) => {
                   const isActive = sortOrder === order;

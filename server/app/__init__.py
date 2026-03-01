@@ -61,7 +61,7 @@ def _log_startup_banner(app):
     logger.info("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     logger.info("")
     logger.info("  api.savlink")
-    logger.info("  v0.3.0 · Link Management API")
+    logger.info("  v0.5.0 · Link Management API")
     logger.info("")
     logger.info("  ── Configuration ──────────────────────────────")
     logger.info("")
@@ -136,7 +136,7 @@ def _register_hooks(app):
 def _register_health(app):
     @app.route('/')
     def _index():
-        return jsonify(service='api.savlink', status='online', version='0.3.0')
+        return jsonify(service='api.savlink', status='online', version='0.5.0')
 
     @app.route('/ping')
     def _ping():

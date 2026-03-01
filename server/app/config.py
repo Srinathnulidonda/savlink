@@ -42,7 +42,6 @@ class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # ═══ SCALED FOR 1000+ USERS ═══
     _is_prod = os.environ.get('FLASK_ENV') == 'production'
     _worker_count = int(os.environ.get('WEB_CONCURRENCY', '4'))
 

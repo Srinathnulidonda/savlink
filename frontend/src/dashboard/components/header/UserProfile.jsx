@@ -1,4 +1,4 @@
-// src/dashboard/components/sidebar/UserProfile.jsx
+// src/dashboard/components/header/UserProfile.jsx
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,10 +24,7 @@ export default function UserProfile({ user, stats }) {
         return user?._synced ? 'bg-green-500' : 'bg-yellow-500';
     };
 
-    // ── Resolve avatar URL from multiple possible sources ──
     const getAvatarUrl = () => {
-        // User object may carry the URL under different keys
-        // depending on whether it came from Firebase, backend sync, or cache
         return user?.avatar_url || user?.photoURL || user?.picture || null;
     };
 
@@ -37,7 +34,6 @@ export default function UserProfile({ user, stats }) {
     return (
         <div className="border-b border-gray-900 p-3 lg:p-4 relative">
             <div className="flex items-center gap-3">
-                {/* Avatar */}
                 <div className="relative">
                     {showAvatar ? (
                         <img
@@ -56,7 +52,6 @@ export default function UserProfile({ user, stats }) {
                     <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 lg:h-3 w-2.5 lg:w-3 rounded-full ${getStatusColor()} border-2 border-gray-950`} />
                 </div>
 
-                {/* User Info */}
                 <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-white truncate">
                         {user?.name || 'User'}
@@ -66,7 +61,6 @@ export default function UserProfile({ user, stats }) {
                     </div>
                 </div>
 
-                {/* Dropdown Toggle */}
                 <button
                     onClick={() => setShowDropdown(!showDropdown)}
                     className="p-1.5 text-gray-500 hover:text-gray-400 transition-colors"
@@ -78,7 +72,6 @@ export default function UserProfile({ user, stats }) {
                 </button>
             </div>
 
-            {/* Dropdown Menu */}
             <AnimatePresence>
                 {showDropdown && (
                     <>

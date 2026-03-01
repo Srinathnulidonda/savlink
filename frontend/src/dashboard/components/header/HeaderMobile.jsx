@@ -13,7 +13,6 @@ export default function HeaderMobile({
 }) {
     const navigate = useNavigate();
 
-    /* ── Search state ──────────────────────────────────────── */
     const [localQuery, setLocalQuery] = useState('');
     const searchQuery = externalSearchQuery ?? localQuery;
     const setSearchQuery = useCallback((val) => {
@@ -24,7 +23,6 @@ export default function HeaderMobile({
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const searchInputRef = useRef(null);
 
-    /* ── User menu state ───────────────────────────────────── */
     const [showUserMenu, setShowUserMenu] = useState(false);
     const menuRef = useRef(null);
 
@@ -43,7 +41,6 @@ export default function HeaderMobile({
         };
     }, [showUserMenu]);
 
-    /* ── Helpers ────────────────────────────────────────────── */
     const getInitials = (name) => {
         if (!name) return 'U';
         return name
@@ -68,7 +65,6 @@ export default function HeaderMobile({
                 paddingRight: 'max(env(safe-area-inset-right, 0px), 8px)',
             }}
         >
-            {/* ── Hamburger ──────────────────────────────── */}
             <motion.button
                 onClick={onMenuClick}
                 whileTap={{ scale: 0.9 }}
@@ -94,7 +90,6 @@ export default function HeaderMobile({
                 </svg>
             </motion.button>
 
-            {/* ── Search bar (Google Drive pill) ──────────── */}
             <div className="flex-1 min-w-0">
                 <div
                     className={`
@@ -105,7 +100,6 @@ export default function HeaderMobile({
                         }
                     `}
                 >
-                    {/* Search icon */}
                     <div className="pl-3.5 pr-2 flex-shrink-0">
                         <svg
                             className={`h-[18px] w-[18px] transition-colors duration-200
@@ -125,7 +119,6 @@ export default function HeaderMobile({
                         </svg>
                     </div>
 
-                    {/* Input */}
                     <input
                         ref={searchInputRef}
                         type="text"
@@ -145,7 +138,6 @@ export default function HeaderMobile({
                         spellCheck={false}
                     />
 
-                    {/* Clear button */}
                     <AnimatePresence>
                         {searchQuery && (
                             <motion.button
@@ -182,7 +174,6 @@ export default function HeaderMobile({
                 </div>
             </div>
 
-            {/* ── User avatar ────────────────────────────── */}
             <div className="relative flex-shrink-0" ref={menuRef}>
                 <motion.button
                     onClick={() => setShowUserMenu((v) => !v)}
@@ -214,11 +205,9 @@ export default function HeaderMobile({
                     )}
                 </motion.button>
 
-                {/* ── Dropdown ────────────────────────────── */}
                 <AnimatePresence>
                     {showUserMenu && (
                         <>
-                            {/* Scrim */}
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
@@ -228,7 +217,6 @@ export default function HeaderMobile({
                                 onClick={() => setShowUserMenu(false)}
                             />
 
-                            {/* Panel */}
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95, y: -6 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -242,7 +230,6 @@ export default function HeaderMobile({
                                     marginRight: 'env(safe-area-inset-right, 0px)',
                                 }}
                             >
-                                {/* User card */}
                                 <div className="px-4 py-3.5 border-b border-gray-800/50">
                                     <div className="flex items-center gap-3">
                                         {user?.avatar_url ? (
@@ -275,7 +262,6 @@ export default function HeaderMobile({
                                     </div>
                                 </div>
 
-                                {/* Actions */}
                                 <div className="p-1.5">
                                     <MenuBtn
                                         icon={<SettingsIcon />}
@@ -295,7 +281,6 @@ export default function HeaderMobile({
                                     />
                                 </div>
 
-                                {/* Sign out */}
                                 <div className="p-1.5 border-t border-gray-800/50">
                                     <MenuBtn
                                         icon={<LogoutIcon />}
@@ -313,7 +298,6 @@ export default function HeaderMobile({
     );
 }
 
-/* ── Reusable dropdown button ────────────────────────────── */
 function MenuBtn({ icon, label, onClick, danger = false }) {
     return (
         <button
@@ -333,7 +317,6 @@ function MenuBtn({ icon, label, onClick, danger = false }) {
     );
 }
 
-/* ── Icons ───────────────────────────────────────────────── */
 function SettingsIcon() {
     return (
         <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24"
