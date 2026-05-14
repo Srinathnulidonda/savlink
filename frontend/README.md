@@ -16,7 +16,7 @@
 
 A beautiful, fast, and secure personal library for your important links. Built for professionals who collect the internet.
 
-[🚀 Live Demo](https://savlink.app) • [📖 Documentation](https://docs.savlink.app) • [🐛 Report Bug](https://github.com/yourusername/savlink-frontend/issues) • [💡 Request Feature](https://github.com/yourusername/savlink-frontend/issues)
+[🚀 Live Demo](https://savlink.vercel.app) • [📖 Documentation](https://docs.savlink.app) • [🐛 Report Bug](https://github.com/yourusername/savlink-frontend/issues) • [💡 Request Feature](https://github.com/yourusername/savlink-frontend/issues)
 
 </div>
 
